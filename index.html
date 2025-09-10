@@ -1,1037 +1,1037 @@
-     1	<!DOCTYPE html>
-     2	<html lang="ja">
-     3	<head>
-     4	    <meta charset="UTF-8">
-     5	    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-     6	    <title>まつ毛エクステサロン 日報・目標管理システム v2 - Firebase版</title>
-     7	    
-     8	    <!-- Firebase CDN -->
-     9	    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    10	    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    11	    
-    12	    <style>
-    13	        * {
-    14	            margin: 0;
-    15	            padding: 0;
-    16	            box-sizing: border-box;
-    17	        }
-    18	        
-    19	        body {
-    20	            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    21	            background: linear-gradient(135deg, #ffeef7 0%, #ffe0f0 50%, #ffcce6 100%);
-    22	            min-height: 100vh;
-    23	            padding: 10px;
-    24	        }
-    25	        
-    26	        .container {
-    27	            max-width: 420px;
-    28	            margin: 0 auto;
-    29	            background: rgba(255, 255, 255, 0.95);
-    30	            border-radius: 20px;
-    31	            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-    32	            backdrop-filter: blur(10px);
-    33	            overflow: hidden;
-    34	        }
-    35	        
-    36	        .header {
-    37	            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
-    38	            color: white;
-    39	            padding: 20px;
-    40	            text-align: center;
-    41	            border-radius: 20px 20px 0 0;
-    42	        }
-    43	        
-    44	        .header h1 {
-    45	            font-size: 1.5em;
-    46	            margin-bottom: 5px;
-    47	        }
-    48	        
-    49	        .header p {
-    50	            opacity: 0.9;
-    51	            font-size: 0.9em;
-    52	        }
-    53	        
-    54	        .login-form, .main-content {
-    55	            padding: 30px;
-    56	        }
-    57	        
-    58	        .form-group {
-    59	            margin-bottom: 20px;
-    60	        }
-    61	        
-    62	        label {
-    63	            display: block;
-    64	            margin-bottom: 8px;
-    65	            color: #333;
-    66	            font-weight: 500;
-    67	        }
-    68	        
-    69	        input[type="text"], input[type="password"], input[type="date"], input[type="number"], input[type="month"], textarea, select {
-    70	            width: 100%;
-    71	            padding: 15px;
-    72	            border: 2px solid #ffe0f0;
-    73	            border-radius: 12px;
-    74	            font-size: 16px;
-    75	            transition: all 0.3s ease;
-    76	            background: rgba(255, 240, 250, 0.5);
-    77	        }
-    78	        
-    79	        input:focus, textarea:focus, select:focus {
-    80	            outline: none;
-    81	            border-color: #ff69b4;
-    82	            background: rgba(255, 240, 250, 0.8);
-    83	            box-shadow: 0 0 15px rgba(255, 105, 180, 0.2);
-    84	        }
-    85	        
-    86	        .password-container {
-    87	            position: relative;
-    88	        }
-    89	        
-    90	        .password-container input {
-    91	            padding-right: 50px;
-    92	        }
-    93	        
-    94	        .password-toggle {
-    95	            position: absolute;
-    96	            right: 15px;
-    97	            top: 50%;
-    98	            transform: translateY(-50%);
-    99	            background: none;
-   100	            border: none;
-   101	            color: #ff69b4;
-   102	            cursor: pointer;
-   103	            font-size: 16px;
-   104	            display: flex;
-   105	            align-items: center;
-   106	            justify-content: center;
-   107	            width: 20px;
-   108	            height: 20px;
-   109	            z-index: 10;
-   110	        }
-   111	        
-   112	        .btn {
-   113	            width: 100%;
-   114	            padding: 15px;
-   115	            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
-   116	            color: white;
-   117	            border: none;
-   118	            border-radius: 12px;
-   119	            font-size: 16px;
-   120	            font-weight: 600;
-   121	            cursor: pointer;
-   122	            transition: all 0.3s ease;
-   123	            margin-bottom: 15px;
-   124	            touch-action: manipulation;
-   125	        }
-   126	        
-   127	        .btn:hover, .btn:focus {
-   128	            transform: translateY(-2px);
-   129	            box-shadow: 0 10px 25px rgba(255, 20, 147, 0.4);
-   130	        }
-   131	        
-   132	        .btn:active {
-   133	            transform: translateY(0);
-   134	        }
-   135	        
-   136	        .btn.secondary {
-   137	            background: linear-gradient(135deg, #dda0dd 0%, #ba55d3 100%);
-   138	        }
-   139	        
-   140	        .btn.logout {
-   141	            background: linear-gradient(135deg, #ffa500 0%, #ff6347 100%);
-   142	            margin-top: 20px;
-   143	        }
-   144	        
-   145	        .btn.success {
-   146	            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-   147	        }
-   148	        
-   149	        .hidden {
-   150	            display: none !important;
-   151	        }
-   152	        
-   153	        .tabs {
-   154	            display: flex;
-   155	            background: rgba(255, 240, 250, 0.8);
-   156	            border-radius: 12px;
-   157	            overflow: hidden;
-   158	            margin-bottom: 25px;
-   159	        }
-   160	        
-   161	        .tab {
-   162	            flex: 1;
-   163	            padding: 15px 10px;
-   164	            background: transparent;
-   165	            border: none;
-   166	            cursor: pointer;
-   167	            font-size: 14px;
-   168	            font-weight: 500;
-   169	            color: #666;
-   170	            transition: all 0.3s ease;
-   171	        }
-   172	        
-   173	        .tab.active {
-   174	            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
-   175	            color: white;
-   176	            box-shadow: 0 5px 15px rgba(255, 105, 180, 0.3);
-   177	        }
-   178	        
-   179	        .tab:hover:not(.active) {
-   180	            background: rgba(255, 105, 180, 0.1);
-   181	            color: #ff69b4;
-   182	        }
-   183	        
-   184	        .info-text {
-   185	            text-align: center;
-   186	            color: #888;
-   187	            font-size: 14px;
-   188	            margin-top: 20px;
-   189	            padding: 15px;
-   190	            background: rgba(255, 240, 250, 0.3);
-   191	            border-radius: 8px;
-   192	            border-left: 4px solid #ff69b4;
-   193	        }
-   194	        
-   195	        .summary-card {
-   196	            background: rgba(255, 255, 255, 0.9);
-   197	            padding: 20px;
-   198	            border-radius: 12px;
-   199	            margin-bottom: 20px;
-   200	            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-   201	        }
-   202	        
-   203	        .status-indicator {
-   204	            position: fixed;
-   205	            top: 10px;
-   206	            right: 10px;
-   207	            padding: 8px 12px;
-   208	            border-radius: 8px;
-   209	            font-size: 12px;
-   210	            font-weight: bold;
-   211	            z-index: 1000;
-   212	            transition: all 0.3s ease;
-   213	        }
-   214	        
-   215	        .status-connected {
-   216	            background: #4CAF50;
-   217	            color: white;
-   218	        }
-   219	        
-   220	        .status-syncing {
-   221	            background: #FF9800;
-   222	            color: white;
-   223	        }
-   224	        
-   225	        .status-offline {
-   226	            background: #f44336;
-   227	            color: white;
-   228	        }
-   229	        
-   230	        .data-grid {
-   231	            display: grid;
-   232	            grid-template-columns: repeat(2, 1fr);
-   233	            gap: 15px;
-   234	            margin-bottom: 20px;
-   235	        }
-   236	        
-   237	        .data-item {
-   238	            padding: 15px;
-   239	            border-radius: 8px;
-   240	            text-align: center;
-   241	        }
-   242	        
-   243	        .data-item.total { background: rgba(255, 20, 147, 0.1); }
-   244	        .data-item.technical { background: rgba(76, 205, 196, 0.1); }
-   245	        .data-item.retail { background: rgba(255, 165, 0, 0.1); }
-   246	        .data-item.customer { background: rgba(138, 43, 226, 0.1); }
-   247	        
-   248	        .data-label {
-   249	            font-weight: bold;
-   250	            font-size: 14px;
-   251	            margin-bottom: 5px;
-   252	        }
-   253	        
-   254	        .data-value {
-   255	            font-size: 20px;
-   256	            font-weight: bold;
-   257	        }
-   258	        
-   259	        .data-item.total .data-label { color: #ff1493; }
-   260	        .data-item.total .data-value { color: #ff1493; }
-   261	        .data-item.technical .data-label { color: #4ecdc4; }
-   262	        .data-item.technical .data-value { color: #4ecdc4; }
-   263	        .data-item.retail .data-label { color: #ffa500; }
-   264	        .data-item.retail .data-value { color: #ffa500; }
-   265	        .data-item.customer .data-label { color: #8a2be2; }
-   266	        .data-item.customer .data-value { color: #8a2be2; }
-   267	        
-   268	        .employee-list {
-   269	            background: rgba(255, 240, 250, 0.5);
-   270	            padding: 12px;
-   271	            margin-bottom: 8px;
-   272	            border-radius: 8px;
-   273	            display: flex;
-   274	            justify-content: space-between;
-   275	            align-items: center;
-   276	        }
-   277	        
-   278	        .success-message {
-   279	            position: fixed;
-   280	            top: 50px;
-   281	            right: 10px;
-   282	            background: #4CAF50;
-   283	            color: white;
-   284	            padding: 10px 15px;
-   285	            border-radius: 8px;
-   286	            font-size: 14px;
-   287	            z-index: 1001;
-   288	            animation: slideIn 0.3s ease;
-   289	        }
-   290	        
-   291	        @keyframes slideIn {
-   292	            from { transform: translateX(100%); opacity: 0; }
-   293	            to { transform: translateX(0); opacity: 1; }
-   294	        }
-   295	        
-   296	        .sync-button {
-   297	            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-   298	            color: white;
-   299	            border: none;
-   300	            padding: 10px 20px;
-   301	            border-radius: 8px;
-   302	            cursor: pointer;
-   303	            font-size: 14px;
-   304	            margin: 10px 0;
-   305	            transition: all 0.3s ease;
-   306	            width: 100%;
-   307	        }
-   308	        
-   309	        .sync-button:hover {
-   310	            transform: translateY(-2px);
-   311	            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
-   312	        }
-   313	    </style>
-   314	</head>
-   315	<body>
-   316	    <div class="container">
-   317	        <!-- ログイン画面 -->
-   318	        <div id="loginScreen">
-   319	            <div class="header">
-   320	                <h1>🎀 まつ毛エクステサロン</h1>
-   321	                <p>日報・目標管理システム v2 - Firebase版</p>
-   322	            </div>
-   323	            <div class="login-form">
-   324	                <div class="form-group">
-   325	                    <label for="loginName">名前</label>
-   326	                    <input type="text" id="loginName" placeholder="お名前を入力してください">
-   327	                </div>
-   328	                <div class="form-group">
-   329	                    <div class="password-container">
-   330	                        <label for="loginPassword">パスワード</label>
-   331	                        <input type="password" id="loginPassword" placeholder="パスワードを入力してください">
-   332	                        <button type="button" class="password-toggle" onclick="togglePassword('loginPassword')">👁️</button>
-   333	                    </div>
-   334	                </div>
-   335	                <button class="btn" onclick="employeeLogin()">社員ログイン</button>
-   336	                <button class="btn secondary" onclick="adminLogin()">管理者ログイン</button>
-   337	                <div class="info-text">
-   338	                    <strong>管理者パスワード:</strong> admin123<br>
-   339	                    新規社員登録は管理者画面から行えます<br>
-   340	                    <small>🔄 全端末でデータ同期</small>
-   341	                </div>
-   342	            </div>
-   343	        </div>
-   344	
-   345	        <!-- 社員メイン画面 -->
-   346	        <div id="employeeMain" class="main-content hidden">
-   347	            <div class="header">
-   348	                <h1>社員画面</h1>
-   349	                <p id="employeeWelcome">こんにちは！</p>
-   350	            </div>
-   351	            
-   352	            <div class="tabs">
-   353	                <button class="tab active" onclick="showTab('dailyReport')">日報入力</button>
-   354	                <button class="tab" onclick="showTab('monthlySummary')">月次サマリー</button>
-   355	            </div>
-   356	            
-   357	            <!-- 日報入力タブ -->
-   358	            <div id="dailyReportTab" class="tab-content">
-   359	                <div class="summary-card">
-   360	                    <h3 style="color: #ff69b4; margin-bottom: 15px;">📋 本日の日報</h3>
-   361	                    <div class="form-group">
-   362	                        <label for="totalSales">総売上 (円)</label>
-   363	                        <input type="number" id="totalSales" placeholder="0">
-   364	                    </div>
-   365	                    <div class="form-group">
-   366	                        <label for="technicalSales">技術売上 (円)</label>
-   367	                        <input type="number" id="technicalSales" placeholder="0">
-   368	                    </div>
-   369	                    <div class="form-group">
-   370	                        <label for="retailSales">物販売上 (円)</label>
-   371	                        <input type="number" id="retailSales" placeholder="0">
-   372	                    </div>
-   373	                    <div class="form-group">
-   374	                        <label for="customerCount">来客数 (人)</label>
-   375	                        <input type="number" id="customerCount" placeholder="0">
-   376	                    </div>
-   377	                    <div class="form-group">
-   378	                        <label style="display: flex; align-items: center; gap: 8px;">
-   379	                            <input type="checkbox" id="instagramUpdate" style="width: auto;">
-   380	                            Instagram更新済み
-   381	                        </label>
-   382	                    </div>
-   383	                    <div class="form-group">
-   384	                        <label style="display: flex; align-items: center; gap: 8px;">
-   385	                            <input type="checkbox" id="tiktokUpdate" style="width: auto;">
-   386	                            TikTok更新済み
-   387	                        </label>
-   388	                    </div>
-   389	                    <div class="form-group">
-   390	                        <label for="memo">メモ</label>
-   391	                        <textarea id="memo" rows="3" placeholder="今日の振り返りや気づきを記入..."></textarea>
-   392	                    </div>
-   393	                    <button class="btn" onclick="saveDailyReport()">日報を保存</button>
-   394	                </div>
-   395	            </div>
-   396	            
-   397	            <!-- 月次サマリータブ -->
-   398	            <div id="monthlySummaryTab" class="tab-content hidden">
-   399	                <div class="summary-card">
-   400	                    <h3 style="color: #ff69b4; margin-bottom: 15px;">📊 月次サマリー</h3>
-   401	                    <div class="form-group">
-   402	                        <label for="summaryMonth">対象月</label>
-   403	                        <input type="month" id="summaryMonth" onchange="loadMonthlySummary()">
-   404	                    </div>
-   405	                    <div id="summaryContent">
-   406	                        <p style="text-align: center; color: #888; padding: 40px;">月を選択してサマリーを表示</p>
-   407	                    </div>
-   408	                </div>
-   409	            </div>
-   410	
-   411	            <button class="sync-button" onclick="manualSync()">🔄 手動データ同期</button>
-   412	            <button class="btn logout" onclick="logout()">ログアウト</button>
-   413	        </div>
-   414	
-   415	        <!-- 管理者メイン画面 -->
-   416	        <div id="adminMain" class="main-content hidden">
-   417	            <div class="header">
-   418	                <h1>管理者画面</h1>
-   419	                <p>システム管理</p>
-   420	            </div>
-   421	            
-   422	            <div class="tabs">
-   423	                <button class="tab active" onclick="showAdminTab('allEmployees')">全社員データ</button>
-   424	                <button class="tab" onclick="showAdminTab('newEmployee')">新規登録</button>
-   425	                <button class="tab" onclick="showAdminTab('settings')">設定</button>
-   426	            </div>
-   427	
-   428	            <!-- 全社員データタブ -->
-   429	            <div id="allEmployeesTab" class="tab-content">
-   430	                <div class="summary-card">
-   431	                    <h3 style="color: #ff69b4; margin-bottom: 15px;">👥 全社員データ</h3>
-   432	                    <div id="allEmployeesContent">
-   433	                        データを読み込み中...
-   434	                    </div>
-   435	                </div>
-   436	            </div>
-   437	
-   438	            <!-- 新規社員登録タブ -->
-   439	            <div id="newEmployeeTab" class="tab-content hidden">
-   440	                <div class="summary-card">
-   441	                    <h3 style="color: #ff69b4; margin-bottom: 15px;">➕ 新規社員登録</h3>
-   442	                    <div class="form-group">
-   443	                        <label for="newEmployeeName">社員名</label>
-   444	                        <input type="text" id="newEmployeeName" placeholder="社員名を入力">
-   445	                    </div>
-   446	                    <div class="form-group">
-   447	                        <div class="password-container">
-   448	                            <label for="newEmployeePassword">パスワード</label>
-   449	                            <input type="password" id="newEmployeePassword" placeholder="パスワードを入力">
-   450	                            <button type="button" class="password-toggle" onclick="togglePassword('newEmployeePassword')">👁️</button>
-   451	                        </div>
-   452	                    </div>
-   453	                    <button class="btn" onclick="registerNewEmployee()">社員を登録</button>
-   454	                </div>
-   455	            </div>
-   456	
-   457	            <!-- 設定タブ -->
-   458	            <div id="settingsTab" class="tab-content hidden">
-   459	                <div class="summary-card">
-   460	                    <h3 style="color: #ff69b4; margin-bottom: 15px;">⚙️ システム設定</h3>
-   461	                    <div class="form-group">
-   462	                        <button class="btn success" onclick="exportData()">📤 データエクスポート</button>
-   463	                    </div>
-   464	                    <div class="form-group">
-   465	                        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData()">
-   466	                        <button class="btn success" onclick="document.getElementById('importFile').click()">📥 データインポート</button>
-   467	                    </div>
-   468	                    <div class="form-group">
-   469	                        <button class="btn secondary" onclick="clearAllData()">🗑️ 全データクリア</button>
-   470	                    </div>
-   471	                    <div class="info-text">
-   472	                        Firebase統合により全端末でデータ同期されます
-   473	                    </div>
-   474	                </div>
-   475	            </div>
-   476	            
-   477	            <button class="sync-button" onclick="manualSync()">🔄 手動データ同期</button>
-   478	            <button class="btn logout" onclick="logout()">ログアウト</button>
-   479	        </div>
-   480	    </div>
-   481	
-   482	    <!-- 状態表示 -->
-   483	    <div id="statusIndicator" class="status-indicator">🔄 接続中...</div>
-   484	
-   485	    <script>
-   486	        // グローバル変数
-   487	        let currentUser = '';
-   488	        let isAdmin = false;
-   489	        let db = null;
-   490	        let firebaseEnabled = false;
-   491	
-   492	        // Firebase設定（ここに実際の設定を貼り付けてください）
-   493	        const firebaseConfig = {
-   494	            apiKey: "YOUR_API_KEY_HERE",
-   495	            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-   496	            projectId: "YOUR_PROJECT_ID",
-   497	            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-   498	            messagingSenderId: "YOUR_SENDER_ID",
-   499	            appId: "YOUR_APP_ID"
-   500	        };
-   501	
-   502	        // Firebase初期化
-   503	        function initializeFirebase() {
-   504	            try {
-   505	                if (firebaseConfig.apiKey !== "YOUR_API_KEY_HERE" && typeof firebase !== 'undefined') {
-   506	                    firebase.initializeApp(firebaseConfig);
-   507	                    db = firebase.firestore();
-   508	                    firebaseEnabled = true;
-   509	                    console.log('✅ Firebase接続成功');
-   510	                    updateStatus('connected', '🔄 Firebase同期ON');
-   511	                    
-   512	                    // 初期データ同期
-   513	                    syncFromFirebase();
-   514	                } else {
-   515	                    console.log('📱 Firebase設定が必要 - ローカルモードで動作');
-   516	                    updateStatus('offline', '📱 Firebase設定が必要');
-   517	                }
-   518	            } catch (error) {
-   519	                console.error('Firebase接続エラー:', error);
-   520	                updateStatus('offline', '📱 ローカル保存モード');
-   521	            }
-   522	        }
-   523	
-   524	        // ステータス更新
-   525	        function updateStatus(type, message) {
-   526	            const indicator = document.getElementById('statusIndicator');
-   527	            indicator.className = `status-indicator status-${type}`;
-   528	            indicator.textContent = message;
-   529	        }
-   530	
-   531	        // 社員データ管理
-   532	        function getEmployees() {
-   533	            const employees = localStorage.getItem('employees');
-   534	            return employees ? JSON.parse(employees) : [];
-   535	        }
-   536	
-   537	        function saveEmployees(employees) {
-   538	            localStorage.setItem('employees', JSON.stringify(employees));
-   539	        }
-   540	
-   541	        // パスワード表示切り替え
-   542	        function togglePassword(inputId) {
-   543	            const input = document.getElementById(inputId);
-   544	            const button = input.parentElement.querySelector('.password-toggle');
-   545	            
-   546	            if (input.type === 'password') {
-   547	                input.type = 'text';
-   548	                button.textContent = '🙈';
-   549	            } else {
-   550	                input.type = 'password';
-   551	                button.textContent = '👁️';
-   552	            }
-   553	        }
-   554	
-   555	        // 成功メッセージ表示
-   556	        function showSuccess(message) {
-   557	            const notification = document.createElement('div');
-   558	            notification.className = 'success-message';
-   559	            notification.textContent = message;
-   560	            document.body.appendChild(notification);
-   561	            
-   562	            setTimeout(() => notification.remove(), 3000);
-   563	        }
-   564	
-   565	        // Firebase同期機能
-   566	        async function syncToFirebase(collection, data, docId = null) {
-   567	            if (!firebaseEnabled || !db) return false;
-   568	            
-   569	            try {
-   570	                updateStatus('syncing', '📤 同期中...');
-   571	                
-   572	                if (docId) {
-   573	                    await db.collection(collection).doc(docId).set(data);
-   574	                } else {
-   575	                    await db.collection(collection).add({
-   576	                        ...data,
-   577	                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-   578	                    });
-   579	                }
-   580	                
-   581	                updateStatus('connected', '🔄 Firebase同期ON');
-   582	                return true;
-   583	            } catch (error) {
-   584	                console.error('Firebase同期エラー:', error);
-   585	                updateStatus('offline', '❌ 同期エラー');
-   586	                return false;
-   587	            }
-   588	        }
-   589	
-   590	        async function syncFromFirebase() {
-   591	            if (!firebaseEnabled || !db) return;
-   592	
-   593	            try {
-   594	                updateStatus('syncing', '📥 データ取得中...');
-   595	
-   596	                // 社員データ同期
-   597	                const employeesSnapshot = await db.collection('employees').get();
-   598	                const firebaseEmployees = [];
-   599	                employeesSnapshot.forEach(doc => {
-   600	                    firebaseEmployees.push({ id: doc.id, ...doc.data() });
-   601	                });
-   602	
-   603	                // 日報データ同期
-   604	                const reportsSnapshot = await db.collection('dailyReports').get();
-   605	                const firebaseReports = {};
-   606	                reportsSnapshot.forEach(doc => {
-   607	                    const data = doc.data();
-   608	                    firebaseReports[data.date] = data;
-   609	                });
-   610	
-   611	                // ローカルデータとマージ
-   612	                const localEmployees = getEmployees();
-   613	                const localReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
-   614	
-   615	                // より新しいデータを優先してマージ
-   616	                const mergedEmployees = [...localEmployees];
-   617	                firebaseEmployees.forEach(fbEmp => {
-   618	                    const existingIndex = mergedEmployees.findIndex(emp => emp.name === fbEmp.name);
-   619	                    if (existingIndex === -1) {
-   620	                        mergedEmployees.push(fbEmp);
-   621	                    }
-   622	                });
-   623	
-   624	                const mergedReports = { ...localReports, ...firebaseReports };
-   625	
-   626	                // ローカルストレージ更新
-   627	                saveEmployees(mergedEmployees);
-   628	                localStorage.setItem('dailyReports', JSON.stringify(mergedReports));
-   629	
-   630	                updateStatus('connected', '🔄 Firebase同期ON');
-   631	                
-   632	                // UI更新
-   633	                if (isAdmin) {
-   634	                    loadAllEmployeeData();
-   635	                }
-   636	                
-   637	                console.log('✅ Firebase同期完了');
-   638	            } catch (error) {
-   639	                console.error('Firebase取得エラー:', error);
-   640	                updateStatus('offline', '❌ 取得エラー');
-   641	            }
-   642	        }
-   643	
-   644	        // 社員ログイン
-   645	        function employeeLogin() {
-   646	            const name = document.getElementById('loginName').value.trim();
-   647	            const password = document.getElementById('loginPassword').value;
-   648	            
-   649	            if (!name || !password) {
-   650	                alert('名前とパスワードを入力してください。');
-   651	                return;
-   652	            }
-   653	            
-   654	            const employees = getEmployees();
-   655	            const employee = employees.find(emp => emp.name === name && emp.password === password);
-   656	            
-   657	            if (employee) {
-   658	                currentUser = name;
-   659	                isAdmin = false;
-   660	                showScreen('employeeMain');
-   661	                document.getElementById('employeeWelcome').textContent = `こんにちは、${name}さん！`;
-   662	                loadDailyReport();
-   663	                showSuccess('ログインしました！');
-   664	            } else {
-   665	                alert('名前またはパスワードが間違っています。');
-   666	            }
-   667	        }
-   668	
-   669	        // 管理者ログイン
-   670	        function adminLogin() {
-   671	            const password = document.getElementById('loginPassword').value;
-   672	            
-   673	            if (password === 'admin123') {
-   674	                currentUser = 'admin';
-   675	                isAdmin = true;
-   676	                showScreen('adminMain');
-   677	                loadAllEmployeeData();
-   678	                showSuccess('管理者としてログインしました！');
-   679	            } else {
-   680	                alert('管理者パスワードが間違っています。');
-   681	            }
-   682	        }
-   683	
-   684	        // 画面切り替え
-   685	        function showScreen(screenId) {
-   686	            const screens = ['loginScreen', 'employeeMain', 'adminMain'];
-   687	            screens.forEach(screen => {
-   688	                document.getElementById(screen).classList.add('hidden');
-   689	            });
-   690	            document.getElementById(screenId).classList.remove('hidden');
-   691	            
-   692	            if (screenId === 'loginScreen') {
-   693	                document.getElementById('loginName').value = '';
-   694	                document.getElementById('loginPassword').value = '';
-   695	            }
-   696	        }
-   697	
-   698	        // タブ切り替え（社員画面）
-   699	        function showTab(tabName) {
-   700	            const tabs = document.querySelectorAll('#employeeMain .tab');
-   701	            const contents = document.querySelectorAll('#employeeMain .tab-content');
-   702	            
-   703	            tabs.forEach(tab => tab.classList.remove('active'));
-   704	            contents.forEach(content => content.classList.add('hidden'));
-   705	            
-   706	            event.target.classList.add('active');
-   707	            document.getElementById(tabName + 'Tab').classList.remove('hidden');
-   708	            
-   709	            if (tabName === 'monthlySummary') {
-   710	                const currentMonth = new Date().toISOString().substr(0, 7);
-   711	                document.getElementById('summaryMonth').value = currentMonth;
-   712	                loadMonthlySummary();
-   713	            }
-   714	        }
-   715	
-   716	        // タブ切り替え（管理者画面）
-   717	        function showAdminTab(tabName) {
-   718	            const tabs = document.querySelectorAll('#adminMain .tab');
-   719	            const contents = document.querySelectorAll('#adminMain .tab-content');
-   720	            
-   721	            tabs.forEach(tab => tab.classList.remove('active'));
-   722	            contents.forEach(content => content.classList.add('hidden'));
-   723	            
-   724	            event.target.classList.add('active');
-   725	            document.getElementById(tabName + 'Tab').classList.remove('hidden');
-   726	        }
-   727	
-   728	        // 日報保存
-   729	        async function saveDailyReport() {
-   730	            const report = {
-   731	                employeeName: currentUser,
-   732	                sales: parseInt(document.getElementById('totalSales').value) || 0,
-   733	                technicalSales: parseInt(document.getElementById('technicalSales').value) || 0,
-   734	                retailSales: parseInt(document.getElementById('retailSales').value) || 0,
-   735	                customerCount: parseInt(document.getElementById('customerCount').value) || 0,
-   736	                instagramUpdated: document.getElementById('instagramUpdate').checked,
-   737	                tiktokUpdated: document.getElementById('tiktokUpdate').checked,
-   738	                memo: document.getElementById('memo').value,
-   739	                timestamp: new Date().toISOString()
-   740	            };
-   741	            
-   742	            const today = new Date().toISOString().split('T')[0];
-   743	            report.date = today;
-   744	            
-   745	            // ローカル保存
-   746	            let dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
-   747	            dailyReports[today] = report;
-   748	            localStorage.setItem('dailyReports', JSON.stringify(dailyReports));
-   749	            
-   750	            // Firebase同期
-   751	            if (firebaseEnabled) {
-   752	                await syncToFirebase('dailyReports', report, `${currentUser}_${today}`);
-   753	            }
-   754	            
-   755	            showSuccess('日報が保存されました！');
-   756	        }
-   757	
-   758	        // 日報データ読み込み
-   759	        function loadDailyReport() {
-   760	            const today = new Date().toISOString().split('T')[0];
-   761	            const dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
-   762	            const todayReport = dailyReports[today];
-   763	            
-   764	            if (todayReport && todayReport.employeeName === currentUser) {
-   765	                document.getElementById('totalSales').value = todayReport.sales || '';
-   766	                document.getElementById('technicalSales').value = todayReport.technicalSales || '';
-   767	                document.getElementById('retailSales').value = todayReport.retailSales || '';
-   768	                document.getElementById('customerCount').value = todayReport.customerCount || '';
-   769	                document.getElementById('instagramUpdate').checked = todayReport.instagramUpdated || false;
-   770	                document.getElementById('tiktokUpdate').checked = todayReport.tiktokUpdated || false;
-   771	                document.getElementById('memo').value = todayReport.memo || '';
-   772	            }
-   773	        }
-   774	
-   775	        // 月次サマリー読み込み
-   776	        function loadMonthlySummary() {
-   777	            const selectedMonth = document.getElementById('summaryMonth').value;
-   778	            const dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
-   779	            
-   780	            const monthlyData = {
-   781	                totalSales: 0,
-   782	                technicalSales: 0,
-   783	                retailSales: 0,
-   784	                customerCount: 0,
-   785	                workDays: 0,
-   786	                instagramDays: 0,
-   787	                tiktokDays: 0
-   788	            };
-   789	            
-   790	            Object.entries(dailyReports).forEach(([date, report]) => {
-   791	                if (date.startsWith(selectedMonth) && report.employeeName === currentUser) {
-   792	                    monthlyData.totalSales += report.sales || 0;
-   793	                    monthlyData.technicalSales += report.technicalSales || 0;
-   794	                    monthlyData.retailSales += report.retailSales || 0;
-   795	                    monthlyData.customerCount += report.customerCount || 0;
-   796	                    monthlyData.workDays++;
-   797	                    if (report.instagramUpdated) monthlyData.instagramDays++;
-   798	                    if (report.tiktokUpdated) monthlyData.tiktokDays++;
-   799	                }
-   800	            });
-   801	            
-   802	            const summaryContent = document.getElementById('summaryContent');
-   803	            if (monthlyData.workDays === 0) {
-   804	                summaryContent.innerHTML = '<p style="text-align: center; color: #888; padding: 40px;">この月のデータはありません</p>';
-   805	                return;
-   806	            }
-   807	            
-   808	            summaryContent.innerHTML = `
-   809	                <div class="data-grid">
-   810	                    <div class="data-item total">
-   811	                        <div class="data-label">総売上</div>
-   812	                        <div class="data-value">${monthlyData.totalSales.toLocaleString()}円</div>
-   813	                    </div>
-   814	                    <div class="data-item technical">
-   815	                        <div class="data-label">技術売上</div>
-   816	                        <div class="data-value">${monthlyData.technicalSales.toLocaleString()}円</div>
-   817	                    </div>
-   818	                    <div class="data-item retail">
-   819	                        <div class="data-label">物販売上</div>
-   820	                        <div class="data-value">${monthlyData.retailSales.toLocaleString()}円</div>
-   821	                    </div>
-   822	                    <div class="data-item customer">
-   823	                        <div class="data-label">来客数</div>
-   824	                        <div class="data-value">${monthlyData.customerCount}人</div>
-   825	                    </div>
-   826	                </div>
-   827	                <div style="background: rgba(255, 240, 250, 0.5); padding: 15px; border-radius: 8px;">
-   828	                    <div style="margin-bottom: 8px;"><strong>稼働日数:</strong> ${monthlyData.workDays}日</div>
-   829	                    <div style="margin-bottom: 8px;"><strong>Instagram更新:</strong> ${monthlyData.instagramDays}日</div>
-   830	                    <div><strong>TikTok更新:</strong> ${monthlyData.tiktokDays}日</div>
-   831	                </div>
-   832	            `;
-   833	        }
-   834	
-   835	        // 全社員データ読み込み
-   836	        function loadAllEmployeeData() {
-   837	            const employees = getEmployees();
-   838	            const dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
-   839	            const content = document.getElementById('allEmployeesContent');
-   840	            
-   841	            if (employees.length === 0) {
-   842	                content.innerHTML = '<p style="text-align: center; color: #888;">登録された社員はいません</p>';
-   843	                return;
-   844	            }
-   845	            
-   846	            let html = `<div style="margin-bottom: 20px;"><h4 style="color: #ff69b4; margin-bottom: 15px;">登録社員一覧 (${employees.length}名)</h4>`;
-   847	            
-   848	            employees.forEach(emp => {
-   849	                const reportCount = Object.keys(dailyReports).filter(date => 
-   850	                    dailyReports[date].employeeName === emp.name
-   851	                ).length;
-   852	                
-   853	                html += `
-   854	                    <div class="employee-list">
-   855	                        <div>
-   856	                            <strong>${emp.name}</strong>
-   857	                            <div style="font-size: 12px; color: #666;">日報提出: ${reportCount}回</div>
-   858	                        </div>
-   859	                        <div style="font-size: 12px; color: #888;">
-   860	                            登録: ${new Date(emp.registeredAt).toLocaleDateString()}
-   861	                        </div>
-   862	                    </div>
-   863	                `;
-   864	            });
-   865	            
-   866	            html += '</div>';
-   867	            content.innerHTML = html;
-   868	        }
-   869	
-   870	        // 新規社員登録
-   871	        async function registerNewEmployee() {
-   872	            const name = document.getElementById('newEmployeeName').value.trim();
-   873	            const password = document.getElementById('newEmployeePassword').value;
-   874	            
-   875	            if (!name || !password) {
-   876	                alert('社員名とパスワードを入力してください。');
-   877	                return;
-   878	            }
-   879	            
-   880	            const employees = getEmployees();
-   881	            if (employees.find(emp => emp.name === name)) {
-   882	                alert('同じ名前の社員が既に登録されています。');
-   883	                return;
-   884	            }
-   885	            
-   886	            const newEmployee = {
-   887	                name: name,
-   888	                password: password,
-   889	                registeredAt: new Date().toISOString()
-   890	            };
-   891	            
-   892	            employees.push(newEmployee);
-   893	            saveEmployees(employees);
-   894	            
-   895	            // Firebase同期
-   896	            if (firebaseEnabled) {
-   897	                await syncToFirebase('employees', newEmployee);
-   898	            }
-   899	            
-   900	            document.getElementById('newEmployeeName').value = '';
-   901	            document.getElementById('newEmployeePassword').value = '';
-   902	            
-   903	            showSuccess(`${name}さんが登録されました！`);
-   904	            loadAllEmployeeData();
-   905	        }
-   906	
-   907	        // 手動同期
-   908	        async function manualSync() {
-   909	            if (!firebaseEnabled) {
-   910	                alert('Firebase設定が必要です。\n\n設定方法:\n1. Firebase Consoleで設定コードを取得\n2. HTML内の設定部分を更新\n\n現在はローカル保存で動作中です。');
-   911	                return;
-   912	            }
-   913	            
-   914	            updateStatus('syncing', '🔄 手動同期中...');
-   915	            
-   916	            try {
-   917	                // 全データをFirebaseに同期
-   918	                const employees = getEmployees();
-   919	                const dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
-   920	                
-   921	                // 社員データ同期
-   922	                for (const emp of employees) {
-   923	                    await syncToFirebase('employees', emp);
-   924	                }
-   925	                
-   926	                // 日報データ同期
-   927	                for (const [date, report] of Object.entries(dailyReports)) {
-   928	                    await syncToFirebase('dailyReports', { ...report, date }, `${report.employeeName}_${date}`);
-   929	                }
-   930	                
-   931	                // Firebaseからも取得
-   932	                await syncFromFirebase();
-   933	                
-   934	                showSuccess('手動同期が完了しました！');
-   935	            } catch (error) {
-   936	                console.error('手動同期エラー:', error);
-   937	                updateStatus('offline', '❌ 同期エラー');
-   938	                alert('同期に失敗しました。接続を確認してください。');
-   939	            }
-   940	        }
-   941	
-   942	        // データエクスポート
-   943	        function exportData() {
-   944	            const data = {
-   945	                employees: JSON.parse(localStorage.getItem('employees') || '[]'),
-   946	                dailyReports: JSON.parse(localStorage.getItem('dailyReports') || '{}'),
-   947	                exportDate: new Date().toISOString()
-   948	            };
-   949	            
-   950	            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-   951	            const url = URL.createObjectURL(blob);
-   952	            const a = document.createElement('a');
-   953	            a.href = url;
-   954	            a.download = `eyelash-salon-data-${new Date().toISOString().split('T')[0]}.json`;
-   955	            document.body.appendChild(a);
-   956	            a.click();
-   957	            document.body.removeChild(a);
-   958	            URL.revokeObjectURL(url);
-   959	            
-   960	            showSuccess('データをエクスポートしました！');
-   961	        }
-   962	
-   963	        // データインポート
-   964	        function importData() {
-   965	            const file = document.getElementById('importFile').files[0];
-   966	            if (!file) return;
-   967	            
-   968	            const reader = new FileReader();
-   969	            reader.onload = function(e) {
-   970	                try {
-   971	                    const data = JSON.parse(e.target.result);
-   972	                    
-   973	                    if (data.employees) localStorage.setItem('employees', JSON.stringify(data.employees));
-   974	                    if (data.dailyReports) localStorage.setItem('dailyReports', JSON.stringify(data.dailyReports));
-   975	                    
-   976	                    showSuccess('データをインポートしました！');
-   977	                    loadAllEmployeeData();
-   978	                } catch (error) {
-   979	                    alert('ファイルの形式が正しくありません。');
-   980	                }
-   981	            };
-   982	            reader.readAsText(file);
-   983	        }
-   984	
-   985	        // 全データクリア
-   986	        function clearAllData() {
-   987	            if (confirm('本当に全てのデータを削除しますか？この操作は取り消せません。')) {
-   988	                localStorage.removeItem('employees');
-   989	                localStorage.removeItem('dailyReports');
-   990	                showSuccess('全データをクリアしました');
-   991	                loadAllEmployeeData();
-   992	            }
-   993	        }
-   994	
-   995	        // ログアウト
-   996	        function logout() {
-   997	            currentUser = '';
-   998	            isAdmin = false;
-   999	            showScreen('loginScreen');
-  1000	            showSuccess('ログアウトしました');
-  1001	        }
-  1002	
-  1003	        // 初期化
-  1004	        window.addEventListener('load', function() {
-  1005	            // Firebase初期化
-  1006	            initializeFirebase();
-  1007	            
-  1008	            // 現在の月をデフォルトに設定
-  1009	            const currentMonth = new Date().toISOString().substr(0, 7);
-  1010	            const summaryMonth = document.getElementById('summaryMonth');
-  1011	            if (summaryMonth) {
-  1012	                summaryMonth.value = currentMonth;
-  1013	            }
-  1014	            
-  1015	            // 定期同期（5分おき）
-  1016	            if (firebaseEnabled) {
-  1017	                setInterval(syncFromFirebase, 5 * 60 * 1000);
-  1018	            }
-  1019	            
-  1020	            console.log('✅ システム初期化完了 - Firebase統合版');
-  1021	        });
-  1022	
-  1023	        // オンライン復帰時の同期
-  1024	        window.addEventListener('online', function() {
-  1025	            if (firebaseEnabled) {
-  1026	                updateStatus('syncing', '📶 オンライン復帰 - 同期中');
-  1027	                syncFromFirebase();
-  1028	            }
-  1029	        });
-  1030	
-  1031	        // オフライン時の表示
-  1032	        window.addEventListener('offline', function() {
-  1033	            updateStatus('offline', '📱 オフライン - ローカル保存');
-  1034	        });
-  1035	    </script>
-  1036	</body>
-  1037	</html>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>まつ毛エクステサロン 日報・目標管理システム v2 - Firebase版</title>
+    
+    <!-- Firebase CDN -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ffeef7 0%, #ffe0f0 50%, #ffcce6 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+        
+        .container {
+            max-width: 420px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 20px 20px 0 0;
+        }
+        
+        .header h1 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 0.9em;
+        }
+        
+        .login-form, .main-content {
+            padding: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input[type="text"], input[type="password"], input[type="date"], input[type="number"], input[type="month"], textarea, select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ffe0f0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: rgba(255, 240, 250, 0.5);
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #ff69b4;
+            background: rgba(255, 240, 250, 0.8);
+            box-shadow: 0 0 15px rgba(255, 105, 180, 0.2);
+        }
+        
+        .password-container {
+            position: relative;
+        }
+        
+        .password-container input {
+            padding-right: 50px;
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #ff69b4;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            z-index: 10;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+            touch-action: manipulation;
+        }
+        
+        .btn:hover, .btn:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 20, 147, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn.secondary {
+            background: linear-gradient(135deg, #dda0dd 0%, #ba55d3 100%);
+        }
+        
+        .btn.logout {
+            background: linear-gradient(135deg, #ffa500 0%, #ff6347 100%);
+            margin-top: 20px;
+        }
+        
+        .btn.success {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .tabs {
+            display: flex;
+            background: rgba(255, 240, 250, 0.8);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px 10px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            color: white;
+            box-shadow: 0 5px 15px rgba(255, 105, 180, 0.3);
+        }
+        
+        .tab:hover:not(.active) {
+            background: rgba(255, 105, 180, 0.1);
+            color: #ff69b4;
+        }
+        
+        .info-text {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 240, 250, 0.3);
+            border-radius: 8px;
+            border-left: 4px solid #ff69b4;
+        }
+        
+        .summary-card {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        
+        .status-connected {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .status-syncing {
+            background: #FF9800;
+            color: white;
+        }
+        
+        .status-offline {
+            background: #f44336;
+            color: white;
+        }
+        
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .data-item {
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .data-item.total { background: rgba(255, 20, 147, 0.1); }
+        .data-item.technical { background: rgba(76, 205, 196, 0.1); }
+        .data-item.retail { background: rgba(255, 165, 0, 0.1); }
+        .data-item.customer { background: rgba(138, 43, 226, 0.1); }
+        
+        .data-label {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .data-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .data-item.total .data-label { color: #ff1493; }
+        .data-item.total .data-value { color: #ff1493; }
+        .data-item.technical .data-label { color: #4ecdc4; }
+        .data-item.technical .data-value { color: #4ecdc4; }
+        .data-item.retail .data-label { color: #ffa500; }
+        .data-item.retail .data-value { color: #ffa500; }
+        .data-item.customer .data-label { color: #8a2be2; }
+        .data-item.customer .data-value { color: #8a2be2; }
+        
+        .employee-list {
+            background: rgba(255, 240, 250, 0.5);
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .success-message {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            background: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1001;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .sync-button {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .sync-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ログイン画面 -->
+        <div id="loginScreen">
+            <div class="header">
+                <h1>🎀 まつ毛エクステサロン</h1>
+                <p>日報・目標管理システム v2 - Firebase版</p>
+            </div>
+            <div class="login-form">
+                <div class="form-group">
+                    <label for="loginName">名前</label>
+                    <input type="text" id="loginName" placeholder="お名前を入力してください">
+                </div>
+                <div class="form-group">
+                    <div class="password-container">
+                        <label for="loginPassword">パスワード</label>
+                        <input type="password" id="loginPassword" placeholder="パスワードを入力してください">
+                        <button type="button" class="password-toggle" onclick="togglePassword('loginPassword')">👁️</button>
+                    </div>
+                </div>
+                <button class="btn" onclick="employeeLogin()">社員ログイン</button>
+                <button class="btn secondary" onclick="adminLogin()">管理者ログイン</button>
+                <div class="info-text">
+                    <strong>管理者パスワード:</strong> admin123<br>
+                    新規社員登録は管理者画面から行えます<br>
+                    <small>🔄 全端末でデータ同期</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 社員メイン画面 -->
+        <div id="employeeMain" class="main-content hidden">
+            <div class="header">
+                <h1>社員画面</h1>
+                <p id="employeeWelcome">こんにちは！</p>
+            </div>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('dailyReport')">日報入力</button>
+                <button class="tab" onclick="showTab('monthlySummary')">月次サマリー</button>
+            </div>
+            
+            <!-- 日報入力タブ -->
+            <div id="dailyReportTab" class="tab-content">
+                <div class="summary-card">
+                    <h3 style="color: #ff69b4; margin-bottom: 15px;">📋 本日の日報</h3>
+                    <div class="form-group">
+                        <label for="totalSales">総売上 (円)</label>
+                        <input type="number" id="totalSales" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="technicalSales">技術売上 (円)</label>
+                        <input type="number" id="technicalSales" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="retailSales">物販売上 (円)</label>
+                        <input type="number" id="retailSales" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerCount">来客数 (人)</label>
+                        <input type="number" id="customerCount" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="instagramUpdate" style="width: auto;">
+                            Instagram更新済み
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="tiktokUpdate" style="width: auto;">
+                            TikTok更新済み
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="memo">メモ</label>
+                        <textarea id="memo" rows="3" placeholder="今日の振り返りや気づきを記入..."></textarea>
+                    </div>
+                    <button class="btn" onclick="saveDailyReport()">日報を保存</button>
+                </div>
+            </div>
+            
+            <!-- 月次サマリータブ -->
+            <div id="monthlySummaryTab" class="tab-content hidden">
+                <div class="summary-card">
+                    <h3 style="color: #ff69b4; margin-bottom: 15px;">📊 月次サマリー</h3>
+                    <div class="form-group">
+                        <label for="summaryMonth">対象月</label>
+                        <input type="month" id="summaryMonth" onchange="loadMonthlySummary()">
+                    </div>
+                    <div id="summaryContent">
+                        <p style="text-align: center; color: #888; padding: 40px;">月を選択してサマリーを表示</p>
+                    </div>
+                </div>
+            </div>
+
+            <button class="sync-button" onclick="manualSync()">🔄 手動データ同期</button>
+            <button class="btn logout" onclick="logout()">ログアウト</button>
+        </div>
+
+        <!-- 管理者メイン画面 -->
+        <div id="adminMain" class="main-content hidden">
+            <div class="header">
+                <h1>管理者画面</h1>
+                <p>システム管理</p>
+            </div>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="showAdminTab('allEmployees')">全社員データ</button>
+                <button class="tab" onclick="showAdminTab('newEmployee')">新規登録</button>
+                <button class="tab" onclick="showAdminTab('settings')">設定</button>
+            </div>
+
+            <!-- 全社員データタブ -->
+            <div id="allEmployeesTab" class="tab-content">
+                <div class="summary-card">
+                    <h3 style="color: #ff69b4; margin-bottom: 15px;">👥 全社員データ</h3>
+                    <div id="allEmployeesContent">
+                        データを読み込み中...
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新規社員登録タブ -->
+            <div id="newEmployeeTab" class="tab-content hidden">
+                <div class="summary-card">
+                    <h3 style="color: #ff69b4; margin-bottom: 15px;">➕ 新規社員登録</h3>
+                    <div class="form-group">
+                        <label for="newEmployeeName">社員名</label>
+                        <input type="text" id="newEmployeeName" placeholder="社員名を入力">
+                    </div>
+                    <div class="form-group">
+                        <div class="password-container">
+                            <label for="newEmployeePassword">パスワード</label>
+                            <input type="password" id="newEmployeePassword" placeholder="パスワードを入力">
+                            <button type="button" class="password-toggle" onclick="togglePassword('newEmployeePassword')">👁️</button>
+                        </div>
+                    </div>
+                    <button class="btn" onclick="registerNewEmployee()">社員を登録</button>
+                </div>
+            </div>
+
+            <!-- 設定タブ -->
+            <div id="settingsTab" class="tab-content hidden">
+                <div class="summary-card">
+                    <h3 style="color: #ff69b4; margin-bottom: 15px;">⚙️ システム設定</h3>
+                    <div class="form-group">
+                        <button class="btn success" onclick="exportData()">📤 データエクスポート</button>
+                    </div>
+                    <div class="form-group">
+                        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData()">
+                        <button class="btn success" onclick="document.getElementById('importFile').click()">📥 データインポート</button>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn secondary" onclick="clearAllData()">🗑️ 全データクリア</button>
+                    </div>
+                    <div class="info-text">
+                        Firebase統合により全端末でデータ同期されます
+                    </div>
+                </div>
+            </div>
+            
+            <button class="sync-button" onclick="manualSync()">🔄 手動データ同期</button>
+            <button class="btn logout" onclick="logout()">ログアウト</button>
+        </div>
+    </div>
+
+    <!-- 状態表示 -->
+    <div id="statusIndicator" class="status-indicator">🔄 接続中...</div>
+
+    <script>
+        // グローバル変数
+        let currentUser = '';
+        let isAdmin = false;
+        let db = null;
+        let firebaseEnabled = false;
+
+        // Firebase設定（ここに実際の設定を貼り付けてください）
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY_HERE",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Firebase初期化
+        function initializeFirebase() {
+            try {
+                if (firebaseConfig.apiKey !== "YOUR_API_KEY_HERE" && typeof firebase !== 'undefined') {
+                    firebase.initializeApp(firebaseConfig);
+                    db = firebase.firestore();
+                    firebaseEnabled = true;
+                    console.log('✅ Firebase接続成功');
+                    updateStatus('connected', '🔄 Firebase同期ON');
+                    
+                    // 初期データ同期
+                    syncFromFirebase();
+                } else {
+                    console.log('📱 Firebase設定が必要 - ローカルモードで動作');
+                    updateStatus('offline', '📱 Firebase設定が必要');
+                }
+            } catch (error) {
+                console.error('Firebase接続エラー:', error);
+                updateStatus('offline', '📱 ローカル保存モード');
+            }
+        }
+
+        // ステータス更新
+        function updateStatus(type, message) {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.className = `status-indicator status-${type}`;
+            indicator.textContent = message;
+        }
+
+        // 社員データ管理
+        function getEmployees() {
+            const employees = localStorage.getItem('employees');
+            return employees ? JSON.parse(employees) : [];
+        }
+
+        function saveEmployees(employees) {
+            localStorage.setItem('employees', JSON.stringify(employees));
+        }
+
+        // パスワード表示切り替え
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const button = input.parentElement.querySelector('.password-toggle');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                button.textContent = '👁️';
+            }
+        }
+
+        // 成功メッセージ表示
+        function showSuccess(message) {
+            const notification = document.createElement('div');
+            notification.className = 'success-message';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // Firebase同期機能
+        async function syncToFirebase(collection, data, docId = null) {
+            if (!firebaseEnabled || !db) return false;
+            
+            try {
+                updateStatus('syncing', '📤 同期中...');
+                
+                if (docId) {
+                    await db.collection(collection).doc(docId).set(data);
+                } else {
+                    await db.collection(collection).add({
+                        ...data,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+                
+                updateStatus('connected', '🔄 Firebase同期ON');
+                return true;
+            } catch (error) {
+                console.error('Firebase同期エラー:', error);
+                updateStatus('offline', '❌ 同期エラー');
+                return false;
+            }
+        }
+
+        async function syncFromFirebase() {
+            if (!firebaseEnabled || !db) return;
+
+            try {
+                updateStatus('syncing', '📥 データ取得中...');
+
+                // 社員データ同期
+                const employeesSnapshot = await db.collection('employees').get();
+                const firebaseEmployees = [];
+                employeesSnapshot.forEach(doc => {
+                    firebaseEmployees.push({ id: doc.id, ...doc.data() });
+                });
+
+                // 日報データ同期
+                const reportsSnapshot = await db.collection('dailyReports').get();
+                const firebaseReports = {};
+                reportsSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    firebaseReports[data.date] = data;
+                });
+
+                // ローカルデータとマージ
+                const localEmployees = getEmployees();
+                const localReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
+
+                // より新しいデータを優先してマージ
+                const mergedEmployees = [...localEmployees];
+                firebaseEmployees.forEach(fbEmp => {
+                    const existingIndex = mergedEmployees.findIndex(emp => emp.name === fbEmp.name);
+                    if (existingIndex === -1) {
+                        mergedEmployees.push(fbEmp);
+                    }
+                });
+
+                const mergedReports = { ...localReports, ...firebaseReports };
+
+                // ローカルストレージ更新
+                saveEmployees(mergedEmployees);
+                localStorage.setItem('dailyReports', JSON.stringify(mergedReports));
+
+                updateStatus('connected', '🔄 Firebase同期ON');
+                
+                // UI更新
+                if (isAdmin) {
+                    loadAllEmployeeData();
+                }
+                
+                console.log('✅ Firebase同期完了');
+            } catch (error) {
+                console.error('Firebase取得エラー:', error);
+                updateStatus('offline', '❌ 取得エラー');
+            }
+        }
+
+        // 社員ログイン
+        function employeeLogin() {
+            const name = document.getElementById('loginName').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!name || !password) {
+                alert('名前とパスワードを入力してください。');
+                return;
+            }
+            
+            const employees = getEmployees();
+            const employee = employees.find(emp => emp.name === name && emp.password === password);
+            
+            if (employee) {
+                currentUser = name;
+                isAdmin = false;
+                showScreen('employeeMain');
+                document.getElementById('employeeWelcome').textContent = `こんにちは、${name}さん！`;
+                loadDailyReport();
+                showSuccess('ログインしました！');
+            } else {
+                alert('名前またはパスワードが間違っています。');
+            }
+        }
+
+        // 管理者ログイン
+        function adminLogin() {
+            const password = document.getElementById('loginPassword').value;
+            
+            if (password === 'admin123') {
+                currentUser = 'admin';
+                isAdmin = true;
+                showScreen('adminMain');
+                loadAllEmployeeData();
+                showSuccess('管理者としてログインしました！');
+            } else {
+                alert('管理者パスワードが間違っています。');
+            }
+        }
+
+        // 画面切り替え
+        function showScreen(screenId) {
+            const screens = ['loginScreen', 'employeeMain', 'adminMain'];
+            screens.forEach(screen => {
+                document.getElementById(screen).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+            
+            if (screenId === 'loginScreen') {
+                document.getElementById('loginName').value = '';
+                document.getElementById('loginPassword').value = '';
+            }
+        }
+
+        // タブ切り替え（社員画面）
+        function showTab(tabName) {
+            const tabs = document.querySelectorAll('#employeeMain .tab');
+            const contents = document.querySelectorAll('#employeeMain .tab-content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.add('hidden'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.remove('hidden');
+            
+            if (tabName === 'monthlySummary') {
+                const currentMonth = new Date().toISOString().substr(0, 7);
+                document.getElementById('summaryMonth').value = currentMonth;
+                loadMonthlySummary();
+            }
+        }
+
+        // タブ切り替え（管理者画面）
+        function showAdminTab(tabName) {
+            const tabs = document.querySelectorAll('#adminMain .tab');
+            const contents = document.querySelectorAll('#adminMain .tab-content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.add('hidden'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.remove('hidden');
+        }
+
+        // 日報保存
+        async function saveDailyReport() {
+            const report = {
+                employeeName: currentUser,
+                sales: parseInt(document.getElementById('totalSales').value) || 0,
+                technicalSales: parseInt(document.getElementById('technicalSales').value) || 0,
+                retailSales: parseInt(document.getElementById('retailSales').value) || 0,
+                customerCount: parseInt(document.getElementById('customerCount').value) || 0,
+                instagramUpdated: document.getElementById('instagramUpdate').checked,
+                tiktokUpdated: document.getElementById('tiktokUpdate').checked,
+                memo: document.getElementById('memo').value,
+                timestamp: new Date().toISOString()
+            };
+            
+            const today = new Date().toISOString().split('T')[0];
+            report.date = today;
+            
+            // ローカル保存
+            let dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
+            dailyReports[today] = report;
+            localStorage.setItem('dailyReports', JSON.stringify(dailyReports));
+            
+            // Firebase同期
+            if (firebaseEnabled) {
+                await syncToFirebase('dailyReports', report, `${currentUser}_${today}`);
+            }
+            
+            showSuccess('日報が保存されました！');
+        }
+
+        // 日報データ読み込み
+        function loadDailyReport() {
+            const today = new Date().toISOString().split('T')[0];
+            const dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
+            const todayReport = dailyReports[today];
+            
+            if (todayReport && todayReport.employeeName === currentUser) {
+                document.getElementById('totalSales').value = todayReport.sales || '';
+                document.getElementById('technicalSales').value = todayReport.technicalSales || '';
+                document.getElementById('retailSales').value = todayReport.retailSales || '';
+                document.getElementById('customerCount').value = todayReport.customerCount || '';
+                document.getElementById('instagramUpdate').checked = todayReport.instagramUpdated || false;
+                document.getElementById('tiktokUpdate').checked = todayReport.tiktokUpdated || false;
+                document.getElementById('memo').value = todayReport.memo || '';
+            }
+        }
+
+        // 月次サマリー読み込み
+        function loadMonthlySummary() {
+            const selectedMonth = document.getElementById('summaryMonth').value;
+            const dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
+            
+            const monthlyData = {
+                totalSales: 0,
+                technicalSales: 0,
+                retailSales: 0,
+                customerCount: 0,
+                workDays: 0,
+                instagramDays: 0,
+                tiktokDays: 0
+            };
+            
+            Object.entries(dailyReports).forEach(([date, report]) => {
+                if (date.startsWith(selectedMonth) && report.employeeName === currentUser) {
+                    monthlyData.totalSales += report.sales || 0;
+                    monthlyData.technicalSales += report.technicalSales || 0;
+                    monthlyData.retailSales += report.retailSales || 0;
+                    monthlyData.customerCount += report.customerCount || 0;
+                    monthlyData.workDays++;
+                    if (report.instagramUpdated) monthlyData.instagramDays++;
+                    if (report.tiktokUpdated) monthlyData.tiktokDays++;
+                }
+            });
+            
+            const summaryContent = document.getElementById('summaryContent');
+            if (monthlyData.workDays === 0) {
+                summaryContent.innerHTML = '<p style="text-align: center; color: #888; padding: 40px;">この月のデータはありません</p>';
+                return;
+            }
+            
+            summaryContent.innerHTML = `
+                <div class="data-grid">
+                    <div class="data-item total">
+                        <div class="data-label">総売上</div>
+                        <div class="data-value">${monthlyData.totalSales.toLocaleString()}円</div>
+                    </div>
+                    <div class="data-item technical">
+                        <div class="data-label">技術売上</div>
+                        <div class="data-value">${monthlyData.technicalSales.toLocaleString()}円</div>
+                    </div>
+                    <div class="data-item retail">
+                        <div class="data-label">物販売上</div>
+                        <div class="data-value">${monthlyData.retailSales.toLocaleString()}円</div>
+                    </div>
+                    <div class="data-item customer">
+                        <div class="data-label">来客数</div>
+                        <div class="data-value">${monthlyData.customerCount}人</div>
+                    </div>
+                </div>
+                <div style="background: rgba(255, 240, 250, 0.5); padding: 15px; border-radius: 8px;">
+                    <div style="margin-bottom: 8px;"><strong>稼働日数:</strong> ${monthlyData.workDays}日</div>
+                    <div style="margin-bottom: 8px;"><strong>Instagram更新:</strong> ${monthlyData.instagramDays}日</div>
+                    <div><strong>TikTok更新:</strong> ${monthlyData.tiktokDays}日</div>
+                </div>
+            `;
+        }
+
+        // 全社員データ読み込み
+        function loadAllEmployeeData() {
+            const employees = getEmployees();
+            const dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
+            const content = document.getElementById('allEmployeesContent');
+            
+            if (employees.length === 0) {
+                content.innerHTML = '<p style="text-align: center; color: #888;">登録された社員はいません</p>';
+                return;
+            }
+            
+            let html = `<div style="margin-bottom: 20px;"><h4 style="color: #ff69b4; margin-bottom: 15px;">登録社員一覧 (${employees.length}名)</h4>`;
+            
+            employees.forEach(emp => {
+                const reportCount = Object.keys(dailyReports).filter(date => 
+                    dailyReports[date].employeeName === emp.name
+                ).length;
+                
+                html += `
+                    <div class="employee-list">
+                        <div>
+                            <strong>${emp.name}</strong>
+                            <div style="font-size: 12px; color: #666;">日報提出: ${reportCount}回</div>
+                        </div>
+                        <div style="font-size: 12px; color: #888;">
+                            登録: ${new Date(emp.registeredAt).toLocaleDateString()}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            content.innerHTML = html;
+        }
+
+        // 新規社員登録
+        async function registerNewEmployee() {
+            const name = document.getElementById('newEmployeeName').value.trim();
+            const password = document.getElementById('newEmployeePassword').value;
+            
+            if (!name || !password) {
+                alert('社員名とパスワードを入力してください。');
+                return;
+            }
+            
+            const employees = getEmployees();
+            if (employees.find(emp => emp.name === name)) {
+                alert('同じ名前の社員が既に登録されています。');
+                return;
+            }
+            
+            const newEmployee = {
+                name: name,
+                password: password,
+                registeredAt: new Date().toISOString()
+            };
+            
+            employees.push(newEmployee);
+            saveEmployees(employees);
+            
+            // Firebase同期
+            if (firebaseEnabled) {
+                await syncToFirebase('employees', newEmployee);
+            }
+            
+            document.getElementById('newEmployeeName').value = '';
+            document.getElementById('newEmployeePassword').value = '';
+            
+            showSuccess(`${name}さんが登録されました！`);
+            loadAllEmployeeData();
+        }
+
+        // 手動同期
+        async function manualSync() {
+            if (!firebaseEnabled) {
+                alert('Firebase設定が必要です。\n\n設定方法:\n1. Firebase Consoleで設定コードを取得\n2. HTML内の設定部分を更新\n\n現在はローカル保存で動作中です。');
+                return;
+            }
+            
+            updateStatus('syncing', '🔄 手動同期中...');
+            
+            try {
+                // 全データをFirebaseに同期
+                const employees = getEmployees();
+                const dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
+                
+                // 社員データ同期
+                for (const emp of employees) {
+                    await syncToFirebase('employees', emp);
+                }
+                
+                // 日報データ同期
+                for (const [date, report] of Object.entries(dailyReports)) {
+                    await syncToFirebase('dailyReports', { ...report, date }, `${report.employeeName}_${date}`);
+                }
+                
+                // Firebaseからも取得
+                await syncFromFirebase();
+                
+                showSuccess('手動同期が完了しました！');
+            } catch (error) {
+                console.error('手動同期エラー:', error);
+                updateStatus('offline', '❌ 同期エラー');
+                alert('同期に失敗しました。接続を確認してください。');
+            }
+        }
+
+        // データエクスポート
+        function exportData() {
+            const data = {
+                employees: JSON.parse(localStorage.getItem('employees') || '[]'),
+                dailyReports: JSON.parse(localStorage.getItem('dailyReports') || '{}'),
+                exportDate: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `eyelash-salon-data-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showSuccess('データをエクスポートしました！');
+        }
+
+        // データインポート
+        function importData() {
+            const file = document.getElementById('importFile').files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    if (data.employees) localStorage.setItem('employees', JSON.stringify(data.employees));
+                    if (data.dailyReports) localStorage.setItem('dailyReports', JSON.stringify(data.dailyReports));
+                    
+                    showSuccess('データをインポートしました！');
+                    loadAllEmployeeData();
+                } catch (error) {
+                    alert('ファイルの形式が正しくありません。');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // 全データクリア
+        function clearAllData() {
+            if (confirm('本当に全てのデータを削除しますか？この操作は取り消せません。')) {
+                localStorage.removeItem('employees');
+                localStorage.removeItem('dailyReports');
+                showSuccess('全データをクリアしました');
+                loadAllEmployeeData();
+            }
+        }
+
+        // ログアウト
+        function logout() {
+            currentUser = '';
+            isAdmin = false;
+            showScreen('loginScreen');
+            showSuccess('ログアウトしました');
+        }
+
+        // 初期化
+        window.addEventListener('load', function() {
+            // Firebase初期化
+            initializeFirebase();
+            
+            // 現在の月をデフォルトに設定
+            const currentMonth = new Date().toISOString().substr(0, 7);
+            const summaryMonth = document.getElementById('summaryMonth');
+            if (summaryMonth) {
+                summaryMonth.value = currentMonth;
+            }
+            
+            // 定期同期（5分おき）
+            if (firebaseEnabled) {
+                setInterval(syncFromFirebase, 5 * 60 * 1000);
+            }
+            
+            console.log('✅ システム初期化完了 - Firebase統合版');
+        });
+
+        // オンライン復帰時の同期
+        window.addEventListener('online', function() {
+            if (firebaseEnabled) {
+                updateStatus('syncing', '📶 オンライン復帰 - 同期中');
+                syncFromFirebase();
+            }
+        });
+
+        // オフライン時の表示
+        window.addEventListener('offline', function() {
+            updateStatus('offline', '📱 オフライン - ローカル保存');
+        });
+    </script>
+</body>
+</html>
