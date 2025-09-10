@@ -3,7 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>まつ毛エクステサロン 日報・目標管理システム v2</title>
+    <title>まつ毛エクステサロン 日報・目標管理システム</title>
+    
+    <!-- Firebase CDN -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
             margin: 0;
@@ -61,7 +68,7 @@
             font-weight: 500;
         }
         
-        input[type="text"], input[type="password"], input[type="date"], input[type="number"], input[type="month"], textarea, select {
+        input[type="text"], input[type="password"], input[type="date"], input[type="number"], textarea, select {
             width: 100%;
             padding: 15px;
             border: 2px solid #ffe0f0;
@@ -86,10 +93,14 @@
             padding-right: 50px;
         }
         
+        .password-container input[type="password"] {
+            position: relative;
+        }
+        
         .password-toggle {
             position: absolute;
             right: 15px;
-            top: 50%;
+            top: 67%;
             transform: translateY(-50%);
             background: none;
             border: none;
@@ -137,14 +148,6 @@
             margin-top: 20px;
         }
         
-        .btn.success {
-            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
         .tabs {
             display: flex;
             background: rgba(255, 240, 250, 0.8);
@@ -159,303 +162,538 @@
             background: transparent;
             border: none;
             cursor: pointer;
-            font-size: 14px;
             font-weight: 500;
             color: #666;
             transition: all 0.3s ease;
+            text-align: center;
+            font-size: 14px;
         }
         
         .tab.active {
             background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
             color: white;
-            box-shadow: 0 5px 15px rgba(255, 105, 180, 0.3);
         }
         
-        .tab:hover:not(.active) {
-            background: rgba(255, 105, 180, 0.1);
-            color: #ff69b4;
+        .tab-content {
+            display: none;
         }
         
-        .info-text {
-            text-align: center;
-            color: #888;
-            font-size: 14px;
-            margin-top: 20px;
-            padding: 15px;
+        .tab-content.active {
+            display: block;
+        }
+        
+        .daily-entry {
             background: rgba(255, 240, 250, 0.3);
-            border-radius: 8px;
-            border-left: 4px solid #ff69b4;
-        }
-        
-        .summary-card {
-            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #ffe0f0;
+            border-radius: 15px;
             padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .status-indicator {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: bold;
-            z-index: 1000;
-            background: #4CAF50;
-            color: white;
-        }
-        
-        .data-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
             margin-bottom: 20px;
         }
         
-        .data-item {
-            padding: 15px;
-            border-radius: 8px;
+        .daily-entry h3 {
+            color: #ff1493;
+            margin-bottom: 15px;
             text-align: center;
         }
         
-        .data-item.total { background: rgba(255, 20, 147, 0.1); }
-        .data-item.technical { background: rgba(76, 205, 196, 0.1); }
-        .data-item.retail { background: rgba(255, 165, 0, 0.1); }
-        .data-item.customer { background: rgba(138, 43, 226, 0.1); }
+        .row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
         
-        .data-label {
-            font-weight: bold;
-            font-size: 14px;
+        .row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        
+        .calculation-display {
+            background: linear-gradient(135deg, #e6ffe6 0%, #ccffcc 100%);
+            border: 2px solid #90ee90;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .calculation-display h4 {
+            color: #006400;
             margin-bottom: 5px;
         }
         
-        .data-value {
-            font-size: 20px;
+        .calculation-display .amount {
+            font-size: 1.5em;
             font-weight: bold;
+            color: #006400;
         }
         
-        .data-item.total .data-label { color: #ff1493; }
-        .data-item.total .data-value { color: #ff1493; }
-        .data-item.technical .data-label { color: #4ecdc4; }
-        .data-item.technical .data-value { color: #4ecdc4; }
-        .data-item.retail .data-label { color: #ffa500; }
-        .data-item.retail .data-value { color: #ffa500; }
-        .data-item.customer .data-label { color: #8a2be2; }
-        .data-item.customer .data-value { color: #8a2be2; }
+        .error {
+            background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%);
+            border: 2px solid #ff6b6b;
+            color: #d32f2f;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .success {
+            background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%);
+            border: 2px solid #28a745;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+        }
         
         .employee-list {
+            max-height: 400px;
+            overflow-y: auto;
+            background: rgba(255, 240, 250, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+        }
+        
+        .employee-card {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #ff69b4;
+        }
+        
+        .employee-card h4 {
+            color: #ff1493;
+            margin-bottom: 10px;
+        }
+        
+        .data-entry {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .new-employee-form {
             background: rgba(255, 240, 250, 0.5);
-            padding: 12px;
-            margin-bottom: 8px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
         }
         
-        .success-message {
-            position: fixed;
-            top: 50px;
-            right: 10px;
-            background: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 14px;
-            z-index: 1001;
-            animation: slideIn 0.3s ease;
+        @media (max-width: 480px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+                min-height: 100vh;
+            }
+            
+            .header {
+                border-radius: 0;
+            }
+            
+            .row {
+                flex-direction: column;
+                gap: 0;
+            }
+            
+            .row .form-group {
+                margin-bottom: 15px;
+            }
         }
         
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .info-text {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 15px;
+            text-align: center;
+            line-height: 1.4;
+        }
+        
+        .achievement-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        
+        .achievement-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff69b4 0%, #ff1493 100%);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+        
+        .achievement-item {
+            background: rgba(255, 240, 250, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #ff69b4;
+        }
+        
+        .achievement-title {
+            font-weight: bold;
+            color: #ff1493;
+            margin-bottom: 5px;
+        }
+        
+        .achievement-rate {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="header">
+            <h1>💕 まつ毛エクステサロン</h1>
+            <p>日報・目標管理システム</p>
+        </div>
+        
         <!-- ログイン画面 -->
-        <div id="loginScreen">
-            <div class="header">
-                <h1>🎀 まつ毛エクステサロン</h1>
-                <p>日報・目標管理システム v2</p>
+        <div id="loginScreen" class="login-form">
+            <div class="form-group">
+                <label for="loginName">名前</label>
+                <input type="text" id="loginName" placeholder="お名前を入力してください">
             </div>
-            <div class="login-form">
-                <div class="form-group">
-                    <label for="loginName">名前</label>
-                    <input type="text" id="loginName" placeholder="お名前を入力してください">
+            <div class="form-group">
+                <div class="password-container">
+                    <label for="loginPassword">パスワード</label>
+                    <input type="password" id="loginPassword" placeholder="パスワードを入力してください">
+                    <button type="button" class="password-toggle" onclick="togglePassword('loginPassword')">👁️</button>
                 </div>
-                <div class="form-group">
-                    <div class="password-container">
-                        <label for="loginPassword">パスワード</label>
-                        <input type="password" id="loginPassword" placeholder="パスワードを入力してください">
-                        <button type="button" class="password-toggle" onclick="togglePassword('loginPassword')">👁️</button>
-                    </div>
-                </div>
-                <button class="btn" onclick="employeeLogin()">社員ログイン</button>
-                <button class="btn secondary" onclick="adminLogin()">管理者ログイン</button>
-                <div class="info-text">
-                    <strong>管理者パスワード:</strong> admin123<br>
-                    新規社員登録は管理者画面から行えます
-                </div>
+            </div>
+            <button class="btn" onclick="employeeLogin()">社員ログイン</button>
+            <button class="btn secondary" onclick="adminLogin()">管理者ログイン</button>
+            <div class="info-text">
+                新規社員登録は管理者画面から行えます
             </div>
         </div>
-
+        
         <!-- 社員メイン画面 -->
         <div id="employeeMain" class="main-content hidden">
-            <div class="header">
-                <h1>社員画面</h1>
-                <p id="employeeWelcome">こんにちは！</p>
-            </div>
-            
             <div class="tabs">
-                <button class="tab active" onclick="showTab('dailyReport')">日報入力</button>
-                <button class="tab" onclick="showTab('monthlySummary')">月次サマリー</button>
+                <button class="tab active" onclick="showTab('dailyReport')">日報</button>
+                <button class="tab" onclick="showTab('monthlyGoals')">目標</button>
+                <button class="tab" onclick="showTab('pastData')">履歴</button>
+                <button class="tab" onclick="showTab('monthlyAnalysis')">月間集計</button>
             </div>
             
-            <!-- 日報入力タブ -->
-            <div id="dailyReportTab" class="tab-content">
-                <div class="summary-card">
-                    <h3 style="color: #ff69b4; margin-bottom: 15px;">📋 本日の日報</h3>
+            <!-- 日報入力 -->
+            <div id="dailyReport" class="tab-content active">
+                <div class="daily-entry">
+                    <h3>📝 日報入力</h3>
                     <div class="form-group">
-                        <label for="totalSales">総売上 (円)</label>
-                        <input type="number" id="totalSales" placeholder="0">
+                        <label for="reportDate">日付</label>
+                        <input type="date" id="reportDate" onchange="updateGraphRealtime();">
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label for="techSales">技術売上 (円)</label>
+                            <input type="number" id="techSales" placeholder="0" oninput="calculateTotal(); updateGraphRealtime();">
+                        </div>
+                        <div class="form-group">
+                            <label for="productSales">店販売上 (円)</label>
+                            <input type="number" id="productSales" placeholder="0" oninput="calculateTotal(); updateGraphRealtime();">
+                        </div>
+                    </div>
+                    <div class="calculation-display">
+                        <h4>総売上</h4>
+                        <div class="amount" id="totalSalesDisplay">0 円</div>
                     </div>
                     <div class="form-group">
-                        <label for="technicalSales">技術売上 (円)</label>
-                        <input type="number" id="technicalSales" placeholder="0">
+                        <label for="nominations">指名数</label>
+                        <input type="number" id="nominations" placeholder="0" oninput="updateGraphRealtime();">
                     </div>
                     <div class="form-group">
-                        <label for="retailSales">物販売上 (円)</label>
-                        <input type="number" id="retailSales" placeholder="0">
+                        <label for="instagramUpdate">Instagram投稿更新</label>
+                        <select id="instagramUpdate">
+                            <option value="">選択してください</option>
+                            <option value="投稿済み">投稿済み</option>
+                            <option value="未投稿">未投稿</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label for="customerCount">来客数 (人)</label>
-                        <input type="number" id="customerCount" placeholder="0">
+                        <label for="tiktokUpdate">Instagramストーリー更新</label>
+                        <select id="tiktokUpdate">
+                            <option value="">選択してください</option>
+                            <option value="投稿済み">投稿済み</option>
+                            <option value="未投稿">未投稿</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="instagramUpdate" style="width: auto;">
-                            Instagram更新済み
-                        </label>
+                        <label for="blogUpdate">ブログ更新</label>
+                        <select id="blogUpdate">
+                            <option value="">選択してください</option>
+                            <option value="更新済み">更新済み</option>
+                            <option value="未更新">未更新</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="tiktokUpdate" style="width: auto;">
-                            TikTok更新済み
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label for="memo">メモ</label>
-                        <textarea id="memo" rows="3" placeholder="今日の振り返りや気づきを記入..."></textarea>
+                        <label for="insights">気づき・メモ</label>
+                        <textarea id="insights" placeholder="今日の気づきや反省点などを記入してください"></textarea>
                     </div>
                     <button class="btn" onclick="saveDailyReport()">日報を保存</button>
                 </div>
             </div>
             
-            <!-- 月次サマリータブ -->
-            <div id="monthlySummaryTab" class="tab-content hidden">
-                <div class="summary-card">
-                    <h3 style="color: #ff69b4; margin-bottom: 15px;">📊 月次サマリー</h3>
+            <!-- 月間目標設定 -->
+            <div id="monthlyGoals" class="tab-content">
+                <div class="daily-entry">
+                    <h3>🎯 月間目標設定</h3>
                     <div class="form-group">
-                        <label for="summaryMonth">対象月</label>
-                        <input type="month" id="summaryMonth" onchange="loadMonthlySummary()">
+                        <label for="goalMonth">対象月</label>
+                        <input type="month" id="goalMonth">
                     </div>
-                    <div id="summaryContent">
-                        <p style="text-align: center; color: #888; padding: 40px;">月を選択してサマリーを表示</p>
+                    <div class="row">
+                        <div class="form-group">
+                            <label for="techSalesGoal">技術売上目標 (円)</label>
+                            <input type="number" id="techSalesGoal" placeholder="0" oninput="calculateGoalTotal()">
+                        </div>
+                        <div class="form-group">
+                            <label for="productSalesGoal">店販売上目標 (円)</label>
+                            <input type="number" id="productSalesGoal" placeholder="0" oninput="calculateGoalTotal()">
+                        </div>
+                    </div>
+                    <div class="calculation-display">
+                        <h4>売上目標（合計）</h4>
+                        <div class="amount" id="totalGoalDisplay">0 円</div>
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label for="nominationGoal">指名数目標</label>
+                            <input type="number" id="nominationGoal" placeholder="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="workDaysGoal">出勤予定日数</label>
+                        <input type="number" id="workDaysGoal" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="goalText">目標文章</label>
+                        <textarea id="goalText" placeholder="今月の目標や意気込みを記入してください"></textarea>
+                    </div>
+                    <button class="btn" onclick="saveMonthlyGoals()">目標を保存</button>
+                </div>
+            </div>
+            
+            <!-- 過去データ閲覧・修正 -->
+            <div id="pastData" class="tab-content">
+                <h3>📋 過去の日報一覧</h3>
+                <div class="form-group">
+                    <label for="historyMonth">表示月</label>
+                    <input type="month" id="historyMonth" onchange="loadHistoryData()">
+                </div>
+                <div id="historyDataDisplay"></div>
+            </div>
+            
+            <!-- 月間集計タブ -->
+            <div id="monthlyAnalysis" class="tab-content">
+                <h3>📊 月間集計・分析</h3>
+                <div class="form-group">
+                    <label for="summaryMonth">表示月</label>
+                    <input type="month" id="summaryMonth" onchange="loadSummaryData(); generateSimpleChart();">
+                </div>
+                
+                <!-- 月間集計表示 -->
+                <div id="monthlySummaryDisplay"></div>
+                
+                <!-- 過去データ比較エリア -->
+                <div id="comparisonArea"></div>
+                
+                <!-- 12ヶ月売上推移グラフセクション -->
+                <div id="chartSection" style="background: white; border-radius: 15px; padding: 20px; margin: 20px 0; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                    <h4 style="color: #ff1493; margin-bottom: 15px; text-align: center;">📈 売上推移グラフ</h4>
+                    
+                    <!-- 期間選択 -->
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <div style="display: inline-flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                            <button class="btn" style="width: auto; padding: 10px 15px; font-size: 14px;" onclick="generateSimpleChart()">グラフ表示</button>
+                            <button class="btn secondary" style="width: auto; padding: 10px 15px; font-size: 14px;" onclick="toggleChartType()">期間選択</button>
+                        </div>
+                        
+                        <!-- カスタム期間選択 -->
+                        <div id="customPeriodSelector" style="display: none; margin-top: 15px;">
+                            <div style="display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                                <label style="font-size: 0.9em;">開始月:</label>
+                                <input type="month" id="chartStartMonth" style="width: 150px;">
+                                <label style="font-size: 0.9em;">終了月:</label>
+                                <input type="month" id="chartEndMonth" style="width: 150px;">
+                                <button class="btn secondary" style="width: auto; padding: 8px 15px; font-size: 14px;" onclick="generateCustomChart()">表示</button>
+                            </div>
+                        </div>
+                        
+                        <!-- グラフ表示切り替えコントロール -->
+                        <div id="chartControls" style="margin-top: 15px; padding: 10px; background: rgba(255, 20, 147, 0.05); border-radius: 8px;">
+                            <div style="text-align: center; margin-bottom: 10px; font-weight: bold; color: #ff1493; font-size: 14px;">📊 表示項目選択</div>
+                            <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
+                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px;">
+                                    <input type="checkbox" id="showTotalSales" checked onchange="updateGraphLines()" style="margin: 0;">
+                                    <span style="color: #ff1493; font-weight: bold;">■</span> 総売上
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px;">
+                                    <input type="checkbox" id="showTechSales" onchange="updateGraphLines()" style="margin: 0;">
+                                    <span style="color: #4ecdc4; font-weight: bold;">■</span> 技術売上
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px;">
+                                    <input type="checkbox" id="showProductSales" onchange="updateGraphLines()" style="margin: 0;">
+                                    <span style="color: #ffa500; font-weight: bold;">■</span> 店販売上
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- グラフ表示エリア -->
+                    <div id="chartContainer">
+                        <!-- Chart.js版（非表示） -->
+                        <canvas id="salesTrendChart" style="height: 400px; display: none;"></canvas>
+                        
+                        <!-- HTML/CSS版折れ線グラフ -->
+                        <div id="simpleSalesChart" style="display: block;">
+                            <!-- グラフコンテナ（固定幅、スクロールなし、12ヶ月表示） -->
+                            <div style="padding: 5px; width: 100%; overflow: hidden;">
+                                <div id="lineChartContainer" style="position: relative; height: 340px; background: #fafafa; border-radius: 10px; border-bottom: 2px solid #ff1493; width: 100%; max-width: 420px; margin: 0 auto;">
+                                    <!-- グリッド線（背景）と目標線 -->
+                                    <div id="gridLines" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+                                        <!-- 通常のグリッド線 -->
+                                        <div style="position: absolute; top: 20%; left: 15px; right: 15px; height: 1px; background: #e0e0e0;"></div>
+                                        <div style="position: absolute; top: 40%; left: 15px; right: 15px; height: 1px; background: #e0e0e0;"></div>
+                                        <div style="position: absolute; top: 60%; left: 15px; right: 15px; height: 1px; background: #e0e0e0;"></div>
+                                        <div style="position: absolute; top: 80%; left: 15px; right: 15px; height: 1px; background: #e0e0e0;"></div>
+                                        <!-- 目標線（50万円・70万円） -->
+                                        <div id="targetLine500k" style="position: absolute; left: 15px; right: 15px; height: 2px; background: #ff6b6b; opacity: 0.8; display: none;"></div>
+                                        <div id="targetLine700k" style="position: absolute; left: 15px; right: 15px; height: 2px; background: #4ecdc4; opacity: 0.8; display: none;"></div>
+                                        <!-- 目標線ラベル -->
+                                        <div id="targetLabel500k" style="position: absolute; right: 20px; font-size: 10px; color: #ff6b6b; font-weight: bold; display: none;">50万</div>
+                                        <div id="targetLabel700k" style="position: absolute; right: 20px; font-size: 10px; color: #4ecdc4; font-weight: bold; display: none;">70万</div>
+                                    </div>
+                                    
+                                    <!-- SVGで折れ線グラフ -->
+                                    <svg id="lineSvg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                                        <polyline id="salesLine" fill="none" stroke="#ff1493" stroke-width="3" points=""></polyline>
+                                        <polyline id="techSalesLine" fill="none" stroke="#4ecdc4" stroke-width="2" points="" style="display: none;"></polyline>
+                                        <polyline id="productSalesLine" fill="none" stroke="#ffa500" stroke-width="2" points="" style="display: none;"></polyline>
+                                    </svg>
+                                    
+                                    <!-- データポイント -->
+                                    <div id="dataPoints" style="position: relative; height: 100%;"></div>
+                                    
+                                    <!-- 月ラベル -->
+                                    <div id="monthLabels" style="position: absolute; bottom: 15px; left: 0; right: 0; height: 20px;"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- 選択した月の詳細表示 -->
+                            <div id="selectedMonthInfo" style="margin-top: 15px; padding: 15px; background: rgba(255, 20, 147, 0.1); border-radius: 10px; text-align: center; min-height: 50px;">
+                                <div style="color: #ff1493; font-weight: bold;">グラフ上の点をクリックして詳細を確認</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+            
+            <!-- データ管理機能 -->
+            <div style="margin: 20px 0; padding: 15px; background: rgba(255, 165, 0, 0.1); border-radius: 10px; border-left: 4px solid #ffa500;">
+                <div style="font-weight: bold; color: #ffa500; margin-bottom: 10px;">📂 データ管理</div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn secondary" onclick="exportAllData()" style="flex: 1; min-width: 120px;">
+                        💾 データ保存
+                    </button>
+                    <label class="btn secondary" style="flex: 1; min-width: 120px; cursor: pointer; text-align: center;">
+                        📂 データ復元
+                        <input type="file" accept=".json" onchange="importData(event)" style="display: none;">
+                    </label>
+                </div>
+                <div style="font-size: 12px; color: #666; margin-top: 8px;">
+                    💡 定期的にデータを保存して、システム更新時に復元してください
+                </div>
+            </div>
 
+            <button class="sync-button" onclick="manualSync()">🔄 手動データ同期</button>
             <button class="btn logout" onclick="logout()">ログアウト</button>
         </div>
-
+        
         <!-- 管理者メイン画面 -->
         <div id="adminMain" class="main-content hidden">
-            <div class="header">
-                <h1>管理者画面</h1>
-                <p>システム管理</p>
-            </div>
-            
             <div class="tabs">
                 <button class="tab active" onclick="showAdminTab('allEmployees')">全社員データ</button>
                 <button class="tab" onclick="showAdminTab('newEmployee')">新規登録</button>
-                <button class="tab" onclick="showAdminTab('settings')">設定</button>
             </div>
-
-            <!-- 全社員データタブ -->
-            <div id="allEmployeesTab" class="tab-content">
-                <div class="summary-card">
-                    <h3 style="color: #ff69b4; margin-bottom: 15px;">👥 全社員データ</h3>
-                    <div id="allEmployeesContent">
-                        データを読み込み中...
-                    </div>
+            
+            <!-- 全社員データ閲覧 -->
+            <div id="allEmployees" class="tab-content active">
+                <h3>👥 全社員データ</h3>
+                <div class="form-group">
+                    <label for="adminDataMonth">表示月</label>
+                    <input type="month" id="adminDataMonth" onchange="loadAllEmployeeData()">
                 </div>
+                <div id="allEmployeeDataDisplay" class="employee-list"></div>
             </div>
-
-            <!-- 新規社員登録タブ -->
-            <div id="newEmployeeTab" class="tab-content hidden">
-                <div class="summary-card">
-                    <h3 style="color: #ff69b4; margin-bottom: 15px;">➕ 新規社員登録</h3>
+            
+            <!-- 新規社員登録 -->
+            <div id="newEmployee" class="tab-content">
+                <div class="new-employee-form">
+                    <h3>➕ 新規社員登録</h3>
                     <div class="form-group">
                         <label for="newEmployeeName">社員名</label>
-                        <input type="text" id="newEmployeeName" placeholder="社員名を入力">
+                        <input type="text" id="newEmployeeName" placeholder="社員名を入力してください">
                     </div>
                     <div class="form-group">
                         <div class="password-container">
                             <label for="newEmployeePassword">パスワード</label>
-                            <input type="password" id="newEmployeePassword" placeholder="パスワードを入力">
+                            <input type="password" id="newEmployeePassword" placeholder="パスワードを入力してください">
                             <button type="button" class="password-toggle" onclick="togglePassword('newEmployeePassword')">👁️</button>
                         </div>
                     </div>
                     <button class="btn" onclick="registerNewEmployee()">社員を登録</button>
                 </div>
             </div>
-
-            <!-- 設定タブ -->
-            <div id="settingsTab" class="tab-content hidden">
-                <div class="summary-card">
-                    <h3 style="color: #ff69b4; margin-bottom: 15px;">⚙️ システム設定</h3>
-                    <div class="form-group">
-                        <button class="btn success" onclick="exportData()">📤 データエクスポート</button>
-                    </div>
-                    <div class="form-group">
-                        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData()">
-                        <button class="btn success" onclick="document.getElementById('importFile').click()">📥 データインポート</button>
-                    </div>
-                    <div class="form-group">
-                        <button class="btn secondary" onclick="clearAllData()">🗑️ 全データクリア</button>
-                    </div>
-                    <div class="info-text">
-                        定期的にデータをバックアップしてください
-                    </div>
-                </div>
-            </div>
             
+            <button class="sync-button" onclick="manualSync()">🔄 手動データ同期</button>
             <button class="btn logout" onclick="logout()">ログアウト</button>
         </div>
     </div>
 
-    <!-- 状態表示 -->
-    <div class="status-indicator">📱 ローカル保存モード</div>
-
     <script>
-        // グローバル変数
-        let currentUser = '';
+        let currentUser = null;
         let isAdmin = false;
 
-        // 社員データ管理
-        function getEmployees() {
-            const employees = localStorage.getItem('employees');
-            return employees ? JSON.parse(employees) : [];
-        }
-
-        function saveEmployees(employees) {
-            localStorage.setItem('employees', JSON.stringify(employees));
-        }
+        // 初期設定
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const todayString = today.toISOString().split('T')[0];
+            const currentMonth = todayString.substring(0, 7);
+            
+            if (document.getElementById('reportDate')) {
+                document.getElementById('reportDate').value = todayString;
+            }
+            if (document.getElementById('goalMonth')) {
+                document.getElementById('goalMonth').value = currentMonth;
+            }
+            if (document.getElementById('historyMonth')) {
+                document.getElementById('historyMonth').value = currentMonth;
+            }
+            if (document.getElementById('summaryMonth')) {
+                document.getElementById('summaryMonth').value = currentMonth;
+            }
+            if (document.getElementById('adminDataMonth')) {
+                document.getElementById('adminDataMonth').value = currentMonth;
+            }
+        });
 
         // パスワード表示切り替え
         function togglePassword(inputId) {
@@ -469,16 +707,6 @@
                 input.type = 'password';
                 button.textContent = '👁️';
             }
-        }
-
-        // 成功メッセージ表示
-        function showSuccess(message) {
-            const notification = document.createElement('div');
-            notification.className = 'success-message';
-            notification.textContent = message;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => notification.remove(), 3000);
         }
 
         // 社員ログイン
@@ -498,9 +726,7 @@
                 currentUser = name;
                 isAdmin = false;
                 showScreen('employeeMain');
-                document.getElementById('employeeWelcome').textContent = `こんにちは、${name}さん！`;
-                loadDailyReport();
-                showSuccess('ログインしました！');
+                loadPastData();
             } else {
                 alert('名前またはパスワードが間違っています。');
             }
@@ -515,7 +741,6 @@
                 isAdmin = true;
                 showScreen('adminMain');
                 loadAllEmployeeData();
-                showSuccess('管理者としてログインしました！');
             } else {
                 alert('管理者パスワードが間違っています。');
             }
@@ -523,181 +748,543 @@
 
         // 画面切り替え
         function showScreen(screenId) {
-            const screens = ['loginScreen', 'employeeMain', 'adminMain'];
-            screens.forEach(screen => {
-                document.getElementById(screen).classList.add('hidden');
-            });
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('employeeMain').classList.add('hidden');
+            document.getElementById('adminMain').classList.add('hidden');
+            
             document.getElementById(screenId).classList.remove('hidden');
             
+            // 入力フィールドをリセット
             if (screenId === 'loginScreen') {
                 document.getElementById('loginName').value = '';
                 document.getElementById('loginPassword').value = '';
             }
         }
 
-        // タブ切り替え（社員画面）
+        // タブ切り替え（社員）
         function showTab(tabName) {
-            const tabs = document.querySelectorAll('#employeeMain .tab');
-            const contents = document.querySelectorAll('#employeeMain .tab-content');
-            
-            tabs.forEach(tab => tab.classList.remove('active'));
-            contents.forEach(content => content.classList.add('hidden'));
-            
+            // タブボタンの状態更新
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             event.target.classList.add('active');
-            document.getElementById(tabName + 'Tab').classList.remove('hidden');
             
-            if (tabName === 'monthlySummary') {
-                const currentMonth = new Date().toISOString().substr(0, 7);
-                document.getElementById('summaryMonth').value = currentMonth;
-                loadMonthlySummary();
+            // タブコンテンツの表示切り替え
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            
+            if (tabName === 'pastData') {
+                loadHistoryData();
+            } else if (tabName === 'monthlyAnalysis') {
+                loadSummaryData();
+                // タブ表示後少し遅延してグラフを更新
+                setTimeout(() => {
+                    generateSimpleChart();
+                }, 200);
             }
         }
 
-        // タブ切り替え（管理者画面）
+        // タブ切り替え（管理者）
         function showAdminTab(tabName) {
-            const tabs = document.querySelectorAll('#adminMain .tab');
-            const contents = document.querySelectorAll('#adminMain .tab-content');
-            
-            tabs.forEach(tab => tab.classList.remove('active'));
-            contents.forEach(content => content.classList.add('hidden'));
-            
+            // タブボタンの状態更新
+            document.querySelectorAll('#adminMain .tab').forEach(tab => tab.classList.remove('active'));
             event.target.classList.add('active');
-            document.getElementById(tabName + 'Tab').classList.remove('hidden');
+            
+            // タブコンテンツの表示切り替え
+            document.querySelectorAll('#adminMain .tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            
+            if (tabName === 'allEmployees') {
+                loadAllEmployeeData();
+            }
+        }
+
+        // 売上合計計算
+        function calculateTotal() {
+            const techSales = parseFloat(document.getElementById('techSales').value) || 0;
+            const productSales = parseFloat(document.getElementById('productSales').value) || 0;
+            const total = techSales + productSales;
+            
+            document.getElementById('totalSalesDisplay').textContent = total.toLocaleString() + ' 円';
+        }
+
+        // 目標売上合計計算
+        function calculateGoalTotal() {
+            const techSalesGoal = parseFloat(document.getElementById('techSalesGoal').value) || 0;
+            const productSalesGoal = parseFloat(document.getElementById('productSalesGoal').value) || 0;
+            const total = techSalesGoal + productSalesGoal;
+            
+            document.getElementById('totalGoalDisplay').textContent = total.toLocaleString() + ' 円';
+        }
+
+        // 社員データ取得/保存
+        function getEmployees() {
+            const stored = localStorage.getItem('lashSalonEmployees');
+            return stored ? JSON.parse(stored) : [];
+        }
+
+        function saveEmployees(employees) {
+            localStorage.setItem('lashSalonEmployees', JSON.stringify(employees));
         }
 
         // 日報保存
         function saveDailyReport() {
-            const report = {
-                employeeName: currentUser,
-                sales: parseInt(document.getElementById('totalSales').value) || 0,
-                technicalSales: parseInt(document.getElementById('technicalSales').value) || 0,
-                retailSales: parseInt(document.getElementById('retailSales').value) || 0,
-                customerCount: parseInt(document.getElementById('customerCount').value) || 0,
-                instagramUpdated: document.getElementById('instagramUpdate').checked,
-                tiktokUpdated: document.getElementById('tiktokUpdate').checked,
-                memo: document.getElementById('memo').value,
+            const reportData = {
+                date: document.getElementById('reportDate').value,
+                techSales: parseFloat(document.getElementById('techSales').value) || 0,
+                productSales: parseFloat(document.getElementById('productSales').value) || 0,
+                totalSales: (parseFloat(document.getElementById('techSales').value) || 0) + (parseFloat(document.getElementById('productSales').value) || 0),
+                nominations: parseInt(document.getElementById('nominations').value) || 0,
+                instagramUpdate: document.getElementById('instagramUpdate').value,
+                tiktokUpdate: document.getElementById('tiktokUpdate').value,
+                blogUpdate: document.getElementById('blogUpdate').value,
+                insights: document.getElementById('insights').value,
                 timestamp: new Date().toISOString()
             };
             
-            const today = new Date().toISOString().split('T')[0];
-            let dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
-            
-            dailyReports[today] = report;
-            localStorage.setItem('dailyReports', JSON.stringify(dailyReports));
-            
-            showSuccess('日報が保存されました！');
-        }
-
-        // 日報データ読み込み
-        function loadDailyReport() {
-            const today = new Date().toISOString().split('T')[0];
-            const dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
-            const todayReport = dailyReports[today];
-            
-            if (todayReport && todayReport.employeeName === currentUser) {
-                document.getElementById('totalSales').value = todayReport.sales || '';
-                document.getElementById('technicalSales').value = todayReport.technicalSales || '';
-                document.getElementById('retailSales').value = todayReport.retailSales || '';
-                document.getElementById('customerCount').value = todayReport.customerCount || '';
-                document.getElementById('instagramUpdate').checked = todayReport.instagramUpdated || false;
-                document.getElementById('tiktokUpdate').checked = todayReport.tiktokUpdated || false;
-                document.getElementById('memo').value = todayReport.memo || '';
+            if (!reportData.date) {
+                alert('日付を選択してください。');
+                return;
             }
+            
+            // 売上の整合性チェック
+            if (reportData.techSales < 0 || reportData.productSales < 0) {
+                alert('売上金額は0以上の数値を入力してください。');
+                return;
+            }
+            
+            const key = `dailyReport_${currentUser}_${reportData.date}`;
+            
+            // 既存のデータがあるかチェック（修正の場合）
+            const existingData = localStorage.getItem(key);
+            if (existingData) {
+                const existing = JSON.parse(existingData);
+                // 修正履歴を追加
+                if (!existing.modificationHistory) {
+                    existing.modificationHistory = [];
+                }
+                reportData.modificationHistory = existing.modificationHistory;
+                reportData.modificationHistory.push(`${new Date().toLocaleString('ja-JP')} に修正`);
+                reportData.originalTimestamp = existing.timestamp; // 元の作成日時を保持
+            }
+            
+            localStorage.setItem(key, JSON.stringify(reportData));
+            
+            // 成功メッセージ
+            showMessage('日報を保存しました！', 'success');
+            
+            // リアルタイムでグラフを更新
+            updateGraphRealtime();
+            
+            // フォームをリセット
+            document.getElementById('techSales').value = '';
+            document.getElementById('productSales').value = '';
+            document.getElementById('nominations').value = '';
+            document.getElementById('instagramUpdate').value = '';
+            document.getElementById('tiktokUpdate').value = '';
+            document.getElementById('blogUpdate').value = '';
+            document.getElementById('insights').value = '';
+            calculateTotal();
         }
 
-        // 月次サマリー読み込み
-        function loadMonthlySummary() {
-            const selectedMonth = document.getElementById('summaryMonth').value;
-            const dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
+        // 月間目標保存
+        function saveMonthlyGoals() {
+            const techSalesGoal = parseFloat(document.getElementById('techSalesGoal').value) || 0;
+            const productSalesGoal = parseFloat(document.getElementById('productSalesGoal').value) || 0;
             
-            const monthlyData = {
-                totalSales: 0,
-                technicalSales: 0,
-                retailSales: 0,
-                customerCount: 0,
-                workDays: 0,
-                instagramDays: 0,
-                tiktokDays: 0
+            const goalData = {
+                month: document.getElementById('goalMonth').value,
+                salesGoal: techSalesGoal + productSalesGoal, // 自動計算された合計値
+                techSalesGoal: techSalesGoal,
+                productSalesGoal: productSalesGoal,
+                nominationGoal: parseInt(document.getElementById('nominationGoal').value) || 0,
+                workDaysGoal: parseInt(document.getElementById('workDaysGoal').value) || 0,
+                goalText: document.getElementById('goalText').value,
+                timestamp: new Date().toISOString()
             };
             
-            Object.entries(dailyReports).forEach(([date, report]) => {
-                if (date.startsWith(selectedMonth) && report.employeeName === currentUser) {
-                    monthlyData.totalSales += report.sales || 0;
-                    monthlyData.technicalSales += report.technicalSales || 0;
-                    monthlyData.retailSales += report.retailSales || 0;
-                    monthlyData.customerCount += report.customerCount || 0;
-                    monthlyData.workDays++;
-                    if (report.instagramUpdated) monthlyData.instagramDays++;
-                    if (report.tiktokUpdated) monthlyData.tiktokDays++;
-                }
-            });
-            
-            const summaryContent = document.getElementById('summaryContent');
-            if (monthlyData.workDays === 0) {
-                summaryContent.innerHTML = '<p style="text-align: center; color: #888; padding: 40px;">この月のデータはありません</p>';
+            if (!goalData.month) {
+                alert('対象月を選択してください。');
                 return;
             }
             
-            summaryContent.innerHTML = `
-                <div class="data-grid">
-                    <div class="data-item total">
-                        <div class="data-label">総売上</div>
-                        <div class="data-value">${monthlyData.totalSales.toLocaleString()}円</div>
-                    </div>
-                    <div class="data-item technical">
-                        <div class="data-label">技術売上</div>
-                        <div class="data-value">${monthlyData.technicalSales.toLocaleString()}円</div>
-                    </div>
-                    <div class="data-item retail">
-                        <div class="data-label">物販売上</div>
-                        <div class="data-value">${monthlyData.retailSales.toLocaleString()}円</div>
-                    </div>
-                    <div class="data-item customer">
-                        <div class="data-label">来客数</div>
-                        <div class="data-value">${monthlyData.customerCount}人</div>
-                    </div>
-                </div>
-                <div style="background: rgba(255, 240, 250, 0.5); padding: 15px; border-radius: 8px;">
-                    <div style="margin-bottom: 8px;"><strong>稼働日数:</strong> ${monthlyData.workDays}日</div>
-                    <div style="margin-bottom: 8px;"><strong>Instagram更新:</strong> ${monthlyData.instagramDays}日</div>
-                    <div><strong>TikTok更新:</strong> ${monthlyData.tiktokDays}日</div>
-                </div>
-            `;
+            const key = `monthlyGoals_${currentUser}_${goalData.month}`;
+            localStorage.setItem(key, JSON.stringify(goalData));
+            
+            showMessage('月間目標を保存しました！', 'success');
+            
+            // リアルタイムでグラフを更新
+            updateGraphRealtime();
         }
 
-        // 全社員データ読み込み
-        function loadAllEmployeeData() {
-            const employees = getEmployees();
-            const dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
-            const content = document.getElementById('allEmployeesContent');
+        // 月間集計データ読み込み
+        function loadSummaryData() {
+            const month = document.getElementById('summaryMonth').value;
+            if (!month) return;
             
-            if (employees.length === 0) {
-                content.innerHTML = '<p style="text-align: center; color: #888;">登録された社員はいません</p>';
+            const summaryDisplay = document.getElementById('monthlySummaryDisplay');
+            summaryDisplay.innerHTML = '';
+            
+            const reports = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith(`dailyReport_${currentUser}_${month}`)) {
+                    const data = JSON.parse(localStorage.getItem(key));
+                    reports.push(data);
+                }
+            }
+            
+            reports.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            // 月間集計の計算と表示
+            if (reports.length > 0) {
+                let totalSales = 0;
+                let totalTechSales = 0;
+                let totalProductSales = 0;
+                let totalNominations = 0;
+                let instagramCount = 0;
+                let tiktokCount = 0;
+                let blogCount = 0;
+                
+                reports.forEach(report => {
+                    totalSales += report.totalSales;
+                    totalTechSales += report.techSales;
+                    totalProductSales += report.productSales;
+                    totalNominations += report.nominations;
+                    
+                    // SNS更新回数カウント
+                    if (report.instagramUpdate === '投稿済み') instagramCount++;
+                    if (report.tiktokUpdate === '投稿済み') tiktokCount++;
+                    if (report.blogUpdate === '更新済み') blogCount++;
+                });
+                
+                // SNS更新率計算
+                const instagramRate = reports.length > 0 ? ((instagramCount / reports.length) * 100).toFixed(1) : 0;
+                const tiktokRate = reports.length > 0 ? ((tiktokCount / reports.length) * 100).toFixed(1) : 0;
+                const blogRate = reports.length > 0 ? ((blogCount / reports.length) * 100).toFixed(1) : 0;
+                
+                // 月間目標の取得と達成率分析
+                const goalKey = `monthlyGoals_${currentUser}_${month}`;
+                const goalData = localStorage.getItem(goalKey);
+                let achievementHTML = '';
+                
+                if (goalData) {
+                    const goals = JSON.parse(goalData);
+                    const salesAchievement = goals.salesGoal > 0 ? ((totalSales / goals.salesGoal) * 100) : 0;
+                    const techAchievement = goals.techSalesGoal > 0 ? ((totalTechSales / goals.techSalesGoal) * 100) : 0;
+                    const productAchievement = goals.productSalesGoal > 0 ? ((totalProductSales / goals.productSalesGoal) * 100) : 0;
+                    const nominationAchievement = goals.nominationGoal > 0 ? ((totalNominations / goals.nominationGoal) * 100) : 0;
+                    
+                    achievementHTML = `
+                        <div class="employee-card">
+                            <h4>🎯 達成率分析</h4>
+                            
+                            <div class="achievement-item">
+                                <div class="achievement-title">総売上達成率</div>
+                                <div class="achievement-rate">${salesAchievement.toFixed(1)}%</div>
+                                <div class="achievement-bar">
+                                    <div class="achievement-fill" style="width: ${Math.min(salesAchievement, 100)}%"></div>
+                                </div>
+                                <small>${totalSales.toLocaleString()}円 / ${goals.salesGoal.toLocaleString()}円</small>
+                            </div>
+                            
+                            <div class="achievement-item">
+                                <div class="achievement-title">技術売上達成率</div>
+                                <div class="achievement-rate">${techAchievement.toFixed(1)}%</div>
+                                <div class="achievement-bar">
+                                    <div class="achievement-fill" style="width: ${Math.min(techAchievement, 100)}%"></div>
+                                </div>
+                                <small>${totalTechSales.toLocaleString()}円 / ${goals.techSalesGoal.toLocaleString()}円</small>
+                            </div>
+                            
+                            <div class="achievement-item">
+                                <div class="achievement-title">店販売上達成率</div>
+                                <div class="achievement-rate">${productAchievement.toFixed(1)}%</div>
+                                <div class="achievement-bar">
+                                    <div class="achievement-fill" style="width: ${Math.min(productAchievement, 100)}%"></div>
+                                </div>
+                                <small>${totalProductSales.toLocaleString()}円 / ${goals.productSalesGoal.toLocaleString()}円</small>
+                            </div>
+                            
+                            <div class="achievement-item">
+                                <div class="achievement-title">指名数達成率</div>
+                                <div class="achievement-rate">${nominationAchievement.toFixed(1)}%</div>
+                                <div class="achievement-bar">
+                                    <div class="achievement-fill" style="width: ${Math.min(nominationAchievement, 100)}%"></div>
+                                </div>
+                                <small>${totalNominations}件 / ${goals.nominationGoal}件</small>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    achievementHTML = `
+                        <div class="employee-card">
+                            <h4>🎯 達成率分析</h4>
+                            <div class="info-text">
+                                この月の目標が設定されていません。<br>
+                                「目標」タブから月間目標を設定してください。
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                summaryDisplay.innerHTML = `
+                    <div class="employee-card">
+                        <h4>📊 月間実績サマリー</h4>
+                        <div class="data-entry"><strong>総売上: ${totalSales.toLocaleString()}円</strong></div>
+                        <div class="data-entry">技術売上: ${totalTechSales.toLocaleString()}円</div>
+                        <div class="data-entry">店販売上: ${totalProductSales.toLocaleString()}円</div>
+                        <div class="data-entry">指名数: ${totalNominations}件</div>
+                        <div class="data-entry">入力日数: ${reports.length}日</div>
+                    </div>
+                    
+                    <div class="employee-card">
+                        <h4>📱 SNS更新率</h4>
+                        <div class="achievement-item">
+                            <div class="achievement-title">Instagram投稿更新率</div>
+                            <div class="achievement-rate">${instagramRate}%</div>
+                            <div class="achievement-bar">
+                                <div class="achievement-fill" style="width: ${instagramRate}%"></div>
+                            </div>
+                            <small>${instagramCount}回 / ${reports.length}日</small>
+                        </div>
+                        
+                        <div class="achievement-item">
+                            <div class="achievement-title">Instagramストーリー更新率</div>
+                            <div class="achievement-rate">${tiktokRate}%</div>
+                            <div class="achievement-bar">
+                                <div class="achievement-fill" style="width: ${tiktokRate}%"></div>
+                            </div>
+                            <small>${tiktokCount}回 / ${reports.length}日</small>
+                        </div>
+                        
+                        <div class="achievement-item">
+                            <div class="achievement-title">ブログ更新率</div>
+                            <div class="achievement-rate">${blogRate}%</div>
+                            <div class="achievement-bar">
+                                <div class="achievement-fill" style="width: ${blogRate}%"></div>
+                            </div>
+                            <small>${blogCount}回 / ${reports.length}日</small>
+                        </div>
+                    </div>
+                    
+                    ${achievementHTML}
+                `;
+                
+                // 過去データとの比較を生成
+                generateComparison(month, totalSales, totalTechSales, totalProductSales, totalNominations, instagramRate, tiktokRate, blogRate);
+                
+                // 初期グラフ表示（実データ）
+                initializeChart(month);
+            }
+            
+            if (reports.length === 0) {
+                summaryDisplay.innerHTML = '<div class="info-text">この月のデータがありません。</div>';
+                // データがない場合でも初期グラフを表示
+                const month = document.getElementById('summaryMonth').value || new Date().toISOString().substr(0, 7);
+                initializeChart(month);
+                return;
+            }
+        }
+
+
+        // 履歴データ読み込み（新しい履歴タブ用）
+        function loadHistoryData() {
+            const month = document.getElementById('historyMonth').value;
+            if (!month) return;
+            
+            const display = document.getElementById('historyDataDisplay');
+            display.innerHTML = '';
+            
+            const reports = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith(`dailyReport_${currentUser}_${month}`)) {
+                    const data = JSON.parse(localStorage.getItem(key));
+                    reports.push(data);
+                }
+            }
+            
+            reports.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            if (reports.length === 0) {
+                display.innerHTML = '<div class="info-text">この月のデータがありません。</div>';
                 return;
             }
             
-            let html = `<div style="margin-bottom: 20px;"><h4 style="color: #ff69b4; margin-bottom: 15px;">登録社員一覧 (${employees.length}名)</h4>`;
-            
-            employees.forEach(emp => {
-                const reportCount = Object.keys(dailyReports).filter(date => 
-                    dailyReports[date].employeeName === emp.name
-                ).length;
+            reports.forEach(report => {
+                const reportDiv = document.createElement('div');
+                reportDiv.className = 'employee-card';
                 
-                html += `
-                    <div class="employee-list">
-                        <div>
-                            <strong>${emp.name}</strong>
-                            <div style="font-size: 12px; color: #666;">日報提出: ${reportCount}回</div>
+                // 修正履歴の表示
+                let modificationHistory = '';
+                if (report.modificationHistory && report.modificationHistory.length > 0) {
+                    modificationHistory = `
+                        <div class="data-entry" style="color: #888; font-size: 0.8em;">
+                            修正履歴: ${report.modificationHistory[report.modificationHistory.length - 1]}
                         </div>
-                        <div style="font-size: 12px; color: #888;">
-                            登録: ${new Date(emp.registeredAt).toLocaleDateString()}
-                        </div>
-                    </div>
+                    `;
+                }
+                
+                reportDiv.innerHTML = `
+                    <h4>📅 ${new Date(report.date).toLocaleDateString('ja-JP')}</h4>
+                    <div class="data-entry">技術売上: ${report.techSales.toLocaleString()}円</div>
+                    <div class="data-entry">店販売上: ${report.productSales.toLocaleString()}円</div>
+                    <div class="data-entry">総売上: ${report.totalSales.toLocaleString()}円</div>
+                    <div class="data-entry">指名数: ${report.nominations}件</div>
+                    <div class="data-entry">Instagram: ${report.instagramUpdate || '未記録'}</div>
+                    <div class="data-entry">TikTok: ${report.tiktokUpdate || '未記録'}</div>
+                    <div class="data-entry">ブログ: ${report.blogUpdate || '未記録'}</div>
+                    <div class="data-entry">気づき: ${report.insights || '未記録'}</div>
+                    ${modificationHistory}
+                    <button class="btn secondary" onclick="editReport('${report.date}')">修正</button>
                 `;
+                display.appendChild(reportDiv);
             });
+        }
+
+        // 報告書修正
+        function editReport(date) {
+            const key = `dailyReport_${currentUser}_${date}`;
+            const report = JSON.parse(localStorage.getItem(key));
             
-            html += '</div>';
-            content.innerHTML = html;
+            if (!report) return;
+            
+            // フォームに値を設定
+            document.getElementById('reportDate').value = report.date;
+            document.getElementById('techSales').value = report.techSales;
+            document.getElementById('productSales').value = report.productSales;
+            document.getElementById('nominations').value = report.nominations;
+            document.getElementById('instagramUpdate').value = report.instagramUpdate || '';
+            document.getElementById('tiktokUpdate').value = report.tiktokUpdate || '';
+            document.getElementById('blogUpdate').value = report.blogUpdate || '';
+            document.getElementById('insights').value = report.insights || '';
+            
+            calculateTotal();
+            
+            // 日報タブに切り替え
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector('button[onclick="showTab(\'dailyReport\')"]').classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById('dailyReport').classList.add('active');
+            
+            showMessage('修正用データを読み込みました。編集して保存してください。', 'success');
+        }
+
+        // 全社員データ読み込み（管理者用）
+        function loadAllEmployeeData() {
+            const month = document.getElementById('adminDataMonth').value;
+            if (!month) return;
+            
+            const display = document.getElementById('allEmployeeDataDisplay');
+            display.innerHTML = '';
+            
+            const employees = getEmployees();
+            if (employees.length === 0) {
+                display.innerHTML = '<div class="info-text">登録された社員がいません。</div>';
+                return;
+            }
+            
+            employees.forEach(employee => {
+                const employeeData = [];
+                
+                // 該当月のデータを取得
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key.startsWith(`dailyReport_${employee.name}_${month}`)) {
+                        const data = JSON.parse(localStorage.getItem(key));
+                        employeeData.push(data);
+                    }
+                }
+                
+                employeeData.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                const employeeDiv = document.createElement('div');
+                employeeDiv.className = 'employee-card';
+                
+                let totalSales = 0;
+                let totalTechSales = 0;
+                let totalProductSales = 0;
+                let totalNominations = 0;
+                
+                employeeData.forEach(data => {
+                    totalSales += data.totalSales;
+                    totalTechSales += data.techSales;
+                    totalProductSales += data.productSales;
+                    totalNominations += data.nominations;
+                });
+                
+                let dataHTML = `<h4>👤 ${employee.name}</h4>`;
+                dataHTML += `<div class="data-entry"><strong>月間合計 - 総売上: ${totalSales.toLocaleString()}円 | 技術売上: ${totalTechSales.toLocaleString()}円 | 店販売上: ${totalProductSales.toLocaleString()}円 | 指名数: ${totalNominations}件</strong></div>`;
+                
+                if (employeeData.length === 0) {
+                    dataHTML += '<div class="data-entry">この月のデータがありません。</div>';
+                } else {
+                    employeeData.forEach(data => {
+                        dataHTML += `
+                            <div class="data-entry" style="cursor: pointer; background: rgba(255, 105, 180, 0.1); border-radius: 8px; margin: 5px 0; padding: 10px;" onclick="showReportDetails('${employee.name}', '${data.date}')">
+                                📅 ${new Date(data.date).toLocaleDateString('ja-JP')} - 
+                                総売上: ${data.totalSales.toLocaleString()}円 | 
+                                指名数: ${data.nominations}件
+                                <small style="display: block; color: #888; margin-top: 5px;">クリックで詳細表示</small>
+                            </div>
+                        `;
+                    });
+                }
+                
+                employeeDiv.innerHTML = dataHTML;
+                display.appendChild(employeeDiv);
+            });
+        }
+
+        // 日報詳細表示（管理者用）
+        function showReportDetails(employeeName, date) {
+            const key = `dailyReport_${employeeName}_${date}`;
+            const report = JSON.parse(localStorage.getItem(key));
+            
+            if (!report) {
+                alert('データが見つかりませんでした。');
+                return;
+            }
+            
+            const detailsHTML = `
+                <div style="background: white; border-radius: 15px; padding: 20px; margin: 10px 0; border: 2px solid #ff69b4;">
+                    <h4 style="color: #ff1493; margin-bottom: 15px;">📋 ${employeeName}さんの日報詳細 - ${new Date(report.date).toLocaleDateString('ja-JP')}</h4>
+                    <div style="margin-bottom: 10px;"><strong>技術売上:</strong> ${report.techSales.toLocaleString()}円</div>
+                    <div style="margin-bottom: 10px;"><strong>店販売上:</strong> ${report.productSales.toLocaleString()}円</div>
+                    <div style="margin-bottom: 10px;"><strong>総売上:</strong> ${report.totalSales.toLocaleString()}円</div>
+                    <div style="margin-bottom: 10px;"><strong>指名数:</strong> ${report.nominations}件</div>
+                    <div style="margin-bottom: 10px;"><strong>Instagram:</strong> ${report.instagramUpdate || '未記録'}</div>
+                    <div style="margin-bottom: 10px;"><strong>TikTok:</strong> ${report.tiktokUpdate || '未記録'}</div>
+                    <div style="margin-bottom: 10px;"><strong>ブログ:</strong> ${report.blogUpdate || '未記録'}</div>
+                    <div style="margin-bottom: 15px;"><strong>気づき・メモ:</strong><br>${report.insights || '未記録'}</div>
+                    <div style="font-size: 0.8em; color: #888;">記録日時: ${new Date(report.timestamp).toLocaleString('ja-JP')}</div>
+                    <button onclick="closeReportDetails()" style="margin-top: 15px; padding: 10px 20px; background: #ff69b4; color: white; border: none; border-radius: 8px; cursor: pointer;">閉じる</button>
+                </div>
+            `;
+            
+            // 既存の詳細表示があれば削除
+            const existingDetail = document.getElementById('reportDetail');
+            if (existingDetail) {
+                existingDetail.remove();
+            }
+            
+            // 詳細表示を挿入
+            const detailDiv = document.createElement('div');
+            detailDiv.id = 'reportDetail';
+            detailDiv.innerHTML = detailsHTML;
+            
+            const adminDisplay = document.getElementById('allEmployeeDataDisplay');
+            adminDisplay.insertBefore(detailDiv, adminDisplay.firstChild);
+            
+            // 詳細表示にスクロール
+            detailDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // 日報詳細を閉じる
+        function closeReportDetails() {
+            const detail = document.getElementById('reportDetail');
+            if (detail) {
+                detail.remove();
+            }
         }
 
         // 新規社員登録
@@ -711,51 +1298,935 @@
             }
             
             const employees = getEmployees();
+            
+            // 重複チェック
             if (employees.find(emp => emp.name === name)) {
-                alert('同じ名前の社員が既に登録されています。');
+                alert('この社員名は既に登録されています。');
                 return;
             }
             
-            const newEmployee = {
+            // 新規社員追加
+            employees.push({
                 name: name,
                 password: password,
-                registeredAt: new Date().toISOString()
-            };
+                createdAt: new Date().toISOString()
+            });
             
-            employees.push(newEmployee);
             saveEmployees(employees);
             
+            showMessage('新規社員を登録しました！', 'success');
+            
+            // フォームをリセット
             document.getElementById('newEmployeeName').value = '';
             document.getElementById('newEmployeePassword').value = '';
-            
-            showSuccess(`${name}さんが登録されました！`);
-            loadAllEmployeeData();
         }
 
-        // データエクスポート
-        function exportData() {
-            const data = {
-                employees: JSON.parse(localStorage.getItem('employees') || '[]'),
-                dailyReports: JSON.parse(localStorage.getItem('dailyReports') || '{}'),
-                exportDate: new Date().toISOString()
-            };
+        // メッセージ表示
+        function showMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type;
+            messageDiv.textContent = message;
             
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
+            // メッセージを適切な場所に挿入
+            const activeContent = document.querySelector('.tab-content.active') || document.querySelector('.main-content:not(.hidden)');
+            if (activeContent) {
+                activeContent.insertBefore(messageDiv, activeContent.firstChild);
+                
+                // 3秒後に自動削除
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.parentNode.removeChild(messageDiv);
+                    }
+                }, 3000);
+            }
+        }
+
+        // 過去データとの比較機能
+        function generateComparison(currentMonth, totalSales, totalTechSales, totalProductSales, totalNominations, instagramRate, tiktokRate, blogRate) {
+            const comparisonDisplay = document.getElementById('comparisonArea');
+            
+            // 前月のデータを取得
+            const lastMonthData = getLastMonthData(currentMonth);
+            
+            // 過去1年間のデータを取得
+            const yearlyData = getYearlyData(currentMonth);
+            
+            let comparisonHTML = '';
+            
+            // 前月との比較
+            if (lastMonthData) {
+                comparisonHTML += `
+                    <div class="employee-card">
+                        <h4>📊 前月との比較</h4>
+                        ${generateMonthComparison(lastMonthData, {
+                            totalSales, totalTechSales, totalProductSales, totalNominations,
+                            instagramRate, tiktokRate, blogRate
+                        })}
+                    </div>
+                `;
+            } else {
+                comparisonHTML += `
+                    <div class="employee-card">
+                        <h4>📊 前月との比較</h4>
+                        <div class="info-text">
+                            前月のデータがありません。<br>
+                            2ヶ月目以降から比較データが表示されます。
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 過去1年間との比較
+            if (yearlyData.length > 0) {
+                comparisonHTML += `
+                    <div class="employee-card">
+                        <h4>📈 過去1年間との比較</h4>
+                        ${generateYearlyComparison(yearlyData, {
+                            totalSales, totalTechSales, totalProductSales, totalNominations,
+                            instagramRate, tiktokRate, blogRate
+                        })}
+                    </div>
+                `;
+            } else {
+                comparisonHTML += `
+                    <div class="employee-card">
+                        <h4>📈 過去1年間との比較</h4>
+                        <div class="info-text">
+                            過去1年間のデータがまだ蓄積されていません。<br>
+                            データが増えると詳細な年間比較が表示されます。
+                        </div>
+                    </div>
+                `;
+            }
+            
+            comparisonDisplay.innerHTML = comparisonHTML;
+        }
+        
+        // 前月データ取得
+        function getLastMonthData(currentMonth) {
+            const currentDate = new Date(currentMonth + '-01');
+            const lastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+            const lastMonthStr = lastMonth.toISOString().substr(0, 7);
+            
+            const reports = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith(`dailyReport_${currentUser}_${lastMonthStr}`)) {
+                    const data = JSON.parse(localStorage.getItem(key));
+                    reports.push(data);
+                }
+            }
+            
+            if (reports.length === 0) return null;
+            
+            let totalSales = 0, totalTechSales = 0, totalProductSales = 0, totalNominations = 0;
+            let instagramCount = 0, tiktokCount = 0, blogCount = 0;
+            
+            reports.forEach(report => {
+                totalSales += report.totalSales;
+                totalTechSales += report.techSales;
+                totalProductSales += report.productSales;
+                totalNominations += report.nominations;
+                
+                if (report.instagramUpdate === '投稿済み') instagramCount++;
+                if (report.tiktokUpdate === '投稿済み') tiktokCount++;
+                if (report.blogUpdate === '更新済み') blogCount++;
+            });
+            
+            return {
+                month: lastMonthStr,
+                totalSales, totalTechSales, totalProductSales, totalNominations,
+                instagramRate: ((instagramCount / reports.length) * 100).toFixed(1),
+                tiktokRate: ((tiktokCount / reports.length) * 100).toFixed(1),
+                blogRate: ((blogCount / reports.length) * 100).toFixed(1),
+                workDays: reports.length
+            };
+        }
+        
+        // 過去1年間データ取得
+        function getYearlyData(currentMonth) {
+            const currentDate = new Date(currentMonth + '-01');
+            const yearlyData = [];
+            
+            for (let i = 1; i <= 12; i++) {
+                const targetDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+                const targetMonthStr = targetDate.toISOString().substr(0, 7);
+                
+                const reports = [];
+                for (let j = 0; j < localStorage.length; j++) {
+                    const key = localStorage.key(j);
+                    if (key.startsWith(`dailyReport_${currentUser}_${targetMonthStr}`)) {
+                        const data = JSON.parse(localStorage.getItem(key));
+                        reports.push(data);
+                    }
+                }
+                
+                if (reports.length > 0) {
+                    let totalSales = 0, totalTechSales = 0, totalProductSales = 0, totalNominations = 0;
+                    
+                    reports.forEach(report => {
+                        totalSales += report.totalSales;
+                        totalTechSales += report.techSales;
+                        totalProductSales += report.productSales;
+                        totalNominations += report.nominations;
+                    });
+                    
+                    yearlyData.push({
+                        month: targetMonthStr,
+                        totalSales, totalTechSales, totalProductSales, totalNominations,
+                        workDays: reports.length
+                    });
+                }
+            }
+            
+            return yearlyData.reverse();
+        }
+        
+        // 前月比較データ生成
+        function generateMonthComparison(lastMonth, current) {
+            const salesChange = current.totalSales - lastMonth.totalSales;
+            const salesChangePercent = lastMonth.totalSales > 0 ? ((salesChange / lastMonth.totalSales) * 100).toFixed(1) : 0;
+            
+            const techChange = current.totalTechSales - lastMonth.totalTechSales;
+            const techChangePercent = lastMonth.totalTechSales > 0 ? ((techChange / lastMonth.totalTechSales) * 100).toFixed(1) : 0;
+            
+            const productChange = current.totalProductSales - lastMonth.totalProductSales;
+            const productChangePercent = lastMonth.totalProductSales > 0 ? ((productChange / lastMonth.totalProductSales) * 100).toFixed(1) : 0;
+            
+            const nominationChange = current.totalNominations - lastMonth.totalNominations;
+            
+            const getChangeColor = (value) => value >= 0 ? '#28a745' : '#dc3545';
+            const getChangeIcon = (value) => value >= 0 ? '📈' : '📉';
+            
+            return `
+                <div class="data-entry">
+                    <strong>前月: ${new Date(lastMonth.month + '-01').toLocaleDateString('ja-JP', {year: 'numeric', month: 'long'})}</strong>
+                </div>
+                <div class="data-entry" style="color: ${getChangeColor(salesChange)};">
+                    ${getChangeIcon(salesChange)} 総売上: ${salesChange >= 0 ? '+' : ''}${salesChange.toLocaleString()}円 (${salesChangePercent >= 0 ? '+' : ''}${salesChangePercent}%)
+                    <br><small>前月: ${lastMonth.totalSales.toLocaleString()}円 → 今月: ${current.totalSales.toLocaleString()}円</small>
+                </div>
+                <div class="data-entry" style="color: ${getChangeColor(techChange)};">
+                    ${getChangeIcon(techChange)} 技術売上: ${techChange >= 0 ? '+' : ''}${techChange.toLocaleString()}円 (${techChangePercent >= 0 ? '+' : ''}${techChangePercent}%)
+                </div>
+                <div class="data-entry" style="color: ${getChangeColor(productChange)};">
+                    ${getChangeIcon(productChange)} 店販売上: ${productChange >= 0 ? '+' : ''}${productChange.toLocaleString()}円 (${productChangePercent >= 0 ? '+' : ''}${productChangePercent}%)
+                </div>
+                <div class="data-entry" style="color: ${getChangeColor(nominationChange)};">
+                    ${getChangeIcon(nominationChange)} 指名数: ${nominationChange >= 0 ? '+' : ''}${nominationChange}件
+                </div>
+            `;
+        }
+        
+        // 年間比較データ生成
+        function generateYearlyComparison(yearlyData, current) {
+            const avgSales = yearlyData.reduce((sum, data) => sum + data.totalSales, 0) / yearlyData.length;
+            const avgTechSales = yearlyData.reduce((sum, data) => sum + data.totalTechSales, 0) / yearlyData.length;
+            const avgProductSales = yearlyData.reduce((sum, data) => sum + data.totalProductSales, 0) / yearlyData.length;
+            const avgNominations = yearlyData.reduce((sum, data) => sum + data.totalNominations, 0) / yearlyData.length;
+            
+            const maxSales = Math.max(...yearlyData.map(data => data.totalSales));
+            const minSales = Math.min(...yearlyData.map(data => data.totalSales));
+            
+            const salesVsAvg = current.totalSales - avgSales;
+            const salesVsAvgPercent = avgSales > 0 ? ((salesVsAvg / avgSales) * 100).toFixed(1) : 0;
+            
+            const getChangeColor = (value) => value >= 0 ? '#28a745' : '#dc3545';
+            const getChangeIcon = (value) => value >= 0 ? '📈' : '📉';
+            
+            return `
+                <div class="data-entry">
+                    <strong>過去${yearlyData.length}ヶ月の平均との比較</strong>
+                </div>
+                <div class="data-entry" style="color: ${getChangeColor(salesVsAvg)};">
+                    ${getChangeIcon(salesVsAvg)} 総売上: 平均より${salesVsAvg >= 0 ? '+' : ''}${salesVsAvg.toLocaleString()}円 (${salesVsAvgPercent >= 0 ? '+' : ''}${salesVsAvgPercent}%)
+                    <br><small>過去平均: ${avgSales.toLocaleString()}円</small>
+                </div>
+                <div class="data-entry">
+                    📊 過去最高: ${maxSales.toLocaleString()}円 | 最低: ${minSales.toLocaleString()}円
+                </div>
+                <div class="data-entry">
+                    📈 技術売上平均: ${avgTechSales.toLocaleString()}円 | 店販売上平均: ${avgProductSales.toLocaleString()}円
+                </div>
+                <div class="data-entry">
+                    🎯 指名数平均: ${avgNominations.toFixed(1)}件
+                </div>
+            `;
+        }
+
+        // グラフ初期化（シンプル版）
+        function initializeChart(currentMonth) {
+            console.log('シンプルグラフ初期化開始:', currentMonth);
+            
+            // HTMLチャートを直接更新
+            setTimeout(() => {
+                generateSimpleChart();
+            }, 100);
+        }
+        
+        // 折れ線グラフ生成（過去1年分）
+        function generateSimpleChart() {
+            console.log('折れ線グラフ生成開始');
+            
+            // 現在のユーザーが設定されているかチェック
+            if (!currentUser) {
+                console.log('ユーザーが設定されていません');
+                return;
+            }
+            
+            // 月次サマリーで選択中の月を取得
+            const selectedMonth = document.getElementById('summaryMonth')?.value || new Date().toISOString().substr(0, 7);
+            console.log('選択中の月:', selectedMonth);
+            
+            // 過去1年分の実際のデータを取得（選択月から遡る）
+            const yearlyData = [];
+            
+            if (selectedMonth && currentUser) {
+                const currentDate = new Date(selectedMonth + '-01');
+                
+                // 過去12ヶ月分のデータを取得（選択月含む）
+                for (let i = 11; i >= 0; i--) {
+                    // 正確な月計算を行う
+                    const targetDate = new Date(currentDate);
+                    targetDate.setMonth(currentDate.getMonth() - i);
+                    const targetMonthStr = targetDate.toISOString().substr(0, 7);
+                    const monthData = getMonthData(targetMonthStr);
+                    
+                    console.log(`月データ生成: i=${i}, ターゲット月=${targetMonthStr}`);
+                    
+                    // 全ての月を表示（データがない月は0として表示）
+                    yearlyData.push({
+                        month: targetMonthStr,
+                        monthName: targetDate.toLocaleDateString('ja-JP', {month: 'short'}),
+                        fullDate: new Date(targetDate),
+                        totalSales: monthData.totalSales,
+                        totalTechSales: monthData.totalTechSales,
+                        totalProductSales: monthData.totalProductSales,
+                        nominations: monthData.totalNominations,
+                        workDays: monthData.workDays
+                    });
+                }
+            }
+            
+            console.log('取得した年間データ:', yearlyData);
+            
+            if (yearlyData.length === 0) {
+                const infoContainer = document.getElementById('selectedMonthInfo');
+                if (infoContainer) {
+                    infoContainer.innerHTML = 
+                        '<div style="color: #ff1493; font-weight: bold;">表示できるデータがありません</div>';
+                }
+                return;
+            }
+            
+            // グラフ要素の存在確認
+            const container = document.getElementById('lineChartContainer');
+            const svg = document.getElementById('lineSvg');
+            const line = document.getElementById('salesLine');
+            
+            if (!container || !svg || !line) {
+                console.error('グラフ要素が見つかりません:', {container: !!container, svg: !!svg, line: !!line});
+                setTimeout(() => generateSimpleChart(), 100); // 100ms後に再試行
+                return;
+            }
+            
+            // 折れ線グラフを描画
+            drawLineChart(yearlyData);
+        }
+        
+        // 折れ線グラフ描画（安定版）
+        function drawLineChart(data) {
+            const container = document.getElementById('lineChartContainer');
+            const svg = document.getElementById('lineSvg');
+            const line = document.getElementById('salesLine');
+            const dataPointsContainer = document.getElementById('dataPoints');
+            const monthLabelsContainer = document.getElementById('monthLabels');
+            
+            if (!container || !svg || !line || !dataPointsContainer || !monthLabelsContainer) {
+                console.error('グラフ要素が見つかりません');
+                return;
+            }
+            
+            // 既存の要素をクリア
+            dataPointsContainer.innerHTML = '';
+            monthLabelsContainer.innerHTML = '';
+            
+            if (data.length === 0) {
+                console.log('データが空です');
+                return;
+            }
+            
+            console.log('グラフ描画開始、データ数:', data.length);
+            
+            // グラフ設定（12ヶ月すべてが見えるように調整）
+            const padding = 25;
+            const containerRect = container.getBoundingClientRect();
+            const chartWidth = containerRect.width || 400;
+            const chartHeight = 280;
+            
+            // 最大値・最小値を計算（目標線も含めて範囲設定）
+            const allValues = data.map(d => d.totalSales);
+            const maxSales = Math.max(...allValues, 700000); // 70万円を最低でも含む
+            const minSales = Math.min(...allValues, 0);
+            const salesRange = maxSales - minSales || 1;
+            
+            console.log(`売上範囲: ${minSales.toLocaleString()} - ${maxSales.toLocaleString()}`);
+            
+            // 目標線の位置を計算して表示
+            const target500k = 500000;
+            const target700k = 700000;
+            
+            if (target500k >= minSales && target500k <= maxSales) {
+                const y500k = padding + ((maxSales - target500k) / salesRange) * (chartHeight - padding * 2);
+                const targetLine500k = document.getElementById('targetLine500k');
+                const targetLabel500k = document.getElementById('targetLabel500k');
+                if (targetLine500k && targetLabel500k) {
+                    targetLine500k.style.top = y500k + 'px';
+                    targetLine500k.style.display = 'block';
+                    targetLabel500k.style.top = (y500k - 15) + 'px';
+                    targetLabel500k.style.display = 'block';
+                }
+            }
+            
+            if (target700k >= minSales && target700k <= maxSales) {
+                const y700k = padding + ((maxSales - target700k) / salesRange) * (chartHeight - padding * 2);
+                const targetLine700k = document.getElementById('targetLine700k');
+                const targetLabel700k = document.getElementById('targetLabel700k');
+                if (targetLine700k && targetLabel700k) {
+                    targetLine700k.style.top = y700k + 'px';
+                    targetLine700k.style.display = 'block';
+                    targetLabel700k.style.top = (y700k - 15) + 'px';
+                    targetLabel700k.style.display = 'block';
+                }
+            }
+            
+            // データポイントと線の座標を計算（12ヶ月が見切れないように）
+            const points = [];
+            const availableWidth = chartWidth - (padding * 2);
+            const monthWidth = data.length > 1 ? availableWidth / (data.length - 1) : 0;
+            
+            data.forEach((item, index) => {
+                const x = padding + (index * monthWidth);
+                const y = padding + ((maxSales - item.totalSales) / salesRange) * (chartHeight - padding * 2);
+                
+                points.push(`${x},${y}`);
+                
+                // データポイント作成（データがない月は薄いグレー表示）
+                const hasData = item.workDays > 0;
+                const point = document.createElement('div');
+                point.style.cssText = `
+                    position: absolute;
+                    left: ${x - 6}px;
+                    top: ${y - 6}px;
+                    width: 12px;
+                    height: 12px;
+                    background: ${hasData ? '#ff1493' : '#ddd'};
+                    border: 3px solid white;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                    opacity: ${hasData ? '1' : '0.6'};
+                    z-index: 10;
+                `;
+                
+                point.onclick = () => showMonthDetails(item);
+                dataPointsContainer.appendChild(point);
+                
+                // 月ラベル作成（見切れないように配置）
+                const labelWidth = Math.min(25, monthWidth * 0.8);
+                const label = document.createElement('div');
+                label.style.cssText = `
+                    position: absolute;
+                    left: ${x - labelWidth/2}px;
+                    width: ${labelWidth}px;
+                    text-align: center;
+                    font-size: 10px;
+                    color: #666;
+                    font-weight: 500;
+                `;
+                label.textContent = item.monthName;
+                monthLabelsContainer.appendChild(label);
+            });
+            
+            // 複数の線の座標を計算
+            const techPoints = [];
+            const productPoints = [];
+            
+            data.forEach((item, index) => {
+                const x = padding + (index * monthWidth);
+                const techY = padding + ((maxSales - item.totalTechSales) / salesRange) * (chartHeight - padding * 2);
+                const productY = padding + ((maxSales - item.totalProductSales) / salesRange) * (chartHeight - padding * 2);
+                
+                techPoints.push(`${x},${techY}`);
+                productPoints.push(`${x},${productY}`);
+            });
+            
+            // 全ての線を更新
+            if (points.length > 0) {
+                // 総売上線（メイン）
+                line.setAttribute('points', points.join(' '));
+                
+                // 技術売上線
+                const techLine = document.getElementById('techSalesLine');
+                if (techLine && techPoints.length > 0) {
+                    techLine.setAttribute('points', techPoints.join(' '));
+                }
+                
+                // 店販売上線
+                const productLine = document.getElementById('productSalesLine');
+                if (productLine && productPoints.length > 0) {
+                    productLine.setAttribute('points', productPoints.join(' '));
+                }
+                
+                console.log('複数SVG線を更新:', points.length + 'ポイント');
+            }
+            
+            // 表示設定を適用
+            updateGraphLines();
+            
+            console.log('複数折れ線グラフ描画完了');
+        }
+        
+        // 月詳細表示
+        function showMonthDetails(monthData) {
+            console.log('月詳細表示:', monthData);
+            const infoContainer = document.getElementById('selectedMonthInfo');
+            const date = new Date(monthData.month + '-01');
+            const formattedDate = date.toLocaleDateString('ja-JP', {year: 'numeric', month: 'long'});
+            
+            // 現在の月かどうかをチェック
+            const currentMonth = new Date().toISOString().substr(0, 7);
+            const isCurrentMonth = monthData.month === currentMonth;
+            
+            if (monthData.workDays === 0 && !isCurrentMonth) {
+                infoContainer.innerHTML = `
+                    <div style="color: #ff1493; font-weight: bold; margin-bottom: 10px;">${formattedDate}</div>
+                    <div style="color: #999; text-align: center;">この月のデータはありません</div>
+                `;
+                return;
+            }
+            
+            // 現在の月の場合、リアルタイムデータも表示
+            let realtimeInfo = '';
+            if (isCurrentMonth) {
+                const currentTech = parseFloat(document.getElementById('techSales')?.value) || 0;
+                const currentProduct = parseFloat(document.getElementById('productSales')?.value) || 0;
+                const currentTotal = currentTech + currentProduct;
+                
+                if (currentTotal > 0) {
+                    realtimeInfo = `
+                        <div style="margin-top: 15px; padding: 10px; background: rgba(76, 205, 196, 0.1); border-radius: 8px; border-left: 3px solid #4ecdc4;">
+                            <div style="font-size: 12px; color: #4ecdc4; font-weight: bold; margin-bottom: 8px;">📝 入力中のデータ</div>
+                            <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 8px;">
+                                <div style="text-align: center; font-size: 11px;">
+                                    <div style="color: #4ecdc4;">技術売上</div>
+                                    <div style="font-weight: bold;">${currentTech.toLocaleString()}円</div>
+                                </div>
+                                <div style="text-align: center; font-size: 11px;">
+                                    <div style="color: #ffa500;">店販売上</div>
+                                    <div style="font-weight: bold;">${currentProduct.toLocaleString()}円</div>
+                                </div>
+                                <div style="text-align: center; font-size: 11px;">
+                                    <div style="color: #ff1493;">総売上</div>
+                                    <div style="font-weight: bold; color: #ff1493;">${currentTotal.toLocaleString()}円</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            infoContainer.innerHTML = `
+                <div style="color: #ff1493; font-weight: bold; margin-bottom: 10px;">${formattedDate}の実績</div>
+                <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                    <div style="text-align: center; padding: 8px; background: rgba(255, 20, 147, 0.1); border-radius: 6px; min-width: 70px;">
+                        <div style="font-size: 11px; color: #ff1493; font-weight: bold;">■ 総売上</div>
+                        <div style="font-weight: bold; color: #ff1493; font-size: 14px;">${monthData.totalSales.toLocaleString()}円</div>
+                    </div>
+                    <div style="text-align: center; padding: 8px; background: rgba(76, 205, 196, 0.1); border-radius: 6px; min-width: 70px;">
+                        <div style="font-size: 11px; color: #4ecdc4; font-weight: bold;">■ 技術売上</div>
+                        <div style="font-weight: bold; color: #4ecdc4; font-size: 14px;">${monthData.totalTechSales.toLocaleString()}円</div>
+                    </div>
+                    <div style="text-align: center; padding: 8px; background: rgba(255, 165, 0, 0.1); border-radius: 6px; min-width: 70px;">
+                        <div style="font-size: 11px; color: #ffa500; font-weight: bold;">■ 店販売上</div>
+                        <div style="font-weight: bold; color: #ffa500; font-size: 14px;">${monthData.totalProductSales.toLocaleString()}円</div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 10px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 12px; color: #666;">指名数</div>
+                        <div style="font-weight: bold;">${monthData.nominations}件</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 12px; color: #666;">稼働日数</div>
+                        <div style="font-weight: bold;">${monthData.workDays}日</div>
+                    </div>
+                </div>
+                ${realtimeInfo}
+            `;
+        }
+        
+
+        // リアルタイムグラフ更新（デバウンス付き）
+        let realtimeUpdateTimeout;
+        function updateGraphRealtime() {
+            try {
+                // 前回のタイマーをクリア
+                clearTimeout(realtimeUpdateTimeout);
+                
+                // 200ms後に実行（連続入力時の負荷軽減、よりリアルタイム）
+                realtimeUpdateTimeout = setTimeout(() => {
+                    console.log('リアルタイムグラフ更新開始');
+                    
+                    // 現在月次サマリータブが表示されていて、グラフが表示されている場合のみ更新
+                    const monthlyTab = document.getElementById('monthlyAnalysis');
+                    if (monthlyTab && monthlyTab.classList.contains('active')) {
+                        // 月次サマリーデータも更新
+                        loadSummaryData();
+                        
+                        // 少し遅延させてグラフを更新
+                        setTimeout(() => {
+                            generateSimpleChart();
+                        }, 100);
+                    }
+                }, 200);
+            } catch (error) {
+                console.error('リアルタイム更新エラー:', error);
+            }
+        }
+
+        // グラフ線の表示/非表示を切り替え
+        function updateGraphLines() {
+            try {
+                // チェックボックスの状態を取得
+                const totalCheck = document.getElementById('showTotalSales');
+                const techCheck = document.getElementById('showTechSales');
+                const productCheck = document.getElementById('showProductSales');
+                
+                // 線要素を取得
+                const mainLine = document.getElementById('salesLine');
+                const techLine = document.getElementById('techSalesLine');
+                const productLine = document.getElementById('productSalesLine');
+                
+                // 総売上線（メインライン）は常に表示
+                if (mainLine) {
+                    mainLine.style.display = (totalCheck && totalCheck.checked) ? 'block' : 'block'; // 常に表示
+                }
+                
+                // 技術売上線
+                if (techLine) {
+                    techLine.style.display = (techCheck && techCheck.checked) ? 'block' : 'none';
+                }
+                
+                // 店販売上線
+                if (productLine) {
+                    productLine.style.display = (productCheck && productCheck.checked) ? 'block' : 'none';
+                }
+                
+                console.log('グラフ線表示更新完了');
+                
+            } catch (error) {
+                console.error('グラフ線表示切り替えエラー:', error);
+            }
+        }
+
+        // カスタム期間グラフ生成
+        function generateCustomChart() {
+            try {
+                const startMonth = document.getElementById('chartStartMonth')?.value;
+                const endMonth = document.getElementById('chartEndMonth')?.value;
+                
+                if (!startMonth || !endMonth) {
+                    alert('開始月と終了月を選択してください。');
+                    return;
+                }
+                
+                if (startMonth > endMonth) {
+                    alert('開始月は終了月より前に設定してください。');
+                    return;
+                }
+                
+                console.log('カスタム期間グラフ生成:', startMonth, '〜', endMonth);
+                
+                const customData = [];
+                const startDate = new Date(startMonth + '-01');
+                const endDate = new Date(endMonth + '-01');
+                
+                let currentDate = new Date(startDate);
+                
+                while (currentDate <= endDate) {
+                    const targetMonthStr = currentDate.toISOString().substr(0, 7);
+                    const monthData = getMonthData(targetMonthStr);
+                    
+                    customData.push({
+                        month: targetMonthStr,
+                        monthName: currentDate.toLocaleDateString('ja-JP', {month: 'short'}),
+                        fullDate: new Date(currentDate),
+                        totalSales: monthData.totalSales,
+                        totalTechSales: monthData.totalTechSales,
+                        totalProductSales: monthData.totalProductSales,
+                        nominations: monthData.totalNominations,
+                        workDays: monthData.workDays
+                    });
+                    
+                    // 次の月に進む
+                    currentDate.setMonth(currentDate.getMonth() + 1);
+                }
+                
+                console.log('カスタム期間データ:', customData);
+                
+                if (customData.length === 0) {
+                    alert('指定した期間にデータがありません。');
+                    return;
+                }
+                
+                // グラフを描画
+                drawLineChart(customData);
+                
+            } catch (error) {
+                console.error('カスタム期間グラフエラー:', error);
+                alert('カスタム期間グラフの生成でエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        // 単月データ取得
+        function getMonthData(targetMonthStr) {
+            const targetDate = new Date(targetMonthStr + '-01');
+            const monthName = targetDate.toLocaleDateString('ja-JP', {
+                year: 'numeric',
+                month: 'short'
+            });
+            
+            // 該当月の日報データを取得
+            const reports = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith(`dailyReport_${currentUser}_${targetMonthStr}`)) {
+                    const data = JSON.parse(localStorage.getItem(key));
+                    reports.push(data);
+                }
+            }
+            
+            // 現在入力中のデータをリアルタイムで反映（どの月でも）
+            const currentTech = parseFloat(document.getElementById('techSales')?.value) || 0;
+            const currentProduct = parseFloat(document.getElementById('productSales')?.value) || 0;
+            const currentDateInput = document.getElementById('reportDate')?.value;
+            
+            console.log(`getMonthData: ${targetMonthStr}, 入力日付: ${currentDateInput}, 技術売上: ${currentTech}, 店販売上: ${currentProduct}`);
+            
+            // 入力中のデータがあり、その月のデータである場合
+            if ((currentTech > 0 || currentProduct > 0) && currentDateInput && currentDateInput.startsWith(targetMonthStr)) {
+                console.log(`${targetMonthStr}に入力中データを追加`);
+                const existingReport = reports.find(r => r.date === currentDateInput);
+                if (!existingReport) {
+                    // 仮データとして追加
+                    reports.push({
+                        date: currentDateInput,
+                        techSales: currentTech,
+                        productSales: currentProduct,
+                        totalSales: currentTech + currentProduct,
+                        nominations: parseInt(document.getElementById('nominations')?.value) || 0,
+                        isTemporary: true // 一時的なデータフラグ
+                    });
+                    console.log(`仮データ追加完了: ${currentTech + currentProduct}円`);
+                } else {
+                    console.log('既存データが見つかったため、仮データは追加しない');
+                }
+            }
+            
+            // デバッグ用ログ
+            console.log(`${targetMonthStr}: ${reports.length}件のデータ`, reports);
+            
+            // 月間集計を計算
+            let totalSales = 0;
+            let totalTechSales = 0;
+            let totalProductSales = 0;
+            let totalNominations = 0;
+            
+            reports.forEach(report => {
+                totalSales += report.totalSales || 0;
+                totalTechSales += report.techSales || 0;
+                totalProductSales += report.productSales || 0;
+                totalNominations += report.nominations || 0;
+            });
+            
+            console.log(`${targetMonthStr} 集計:`, {totalSales, totalTechSales, totalProductSales});
+            
+            return {
+                month: targetMonthStr,
+                monthName: monthName,
+                totalSales,
+                totalTechSales,
+                totalProductSales,
+                totalNominations,
+                workDays: reports.length
+            };
+        }
+        
+        // 期間選択表示切替機能
+        function toggleChartType() {
+            try {
+                const customPeriodSelector = document.getElementById('customPeriodSelector');
+                
+                if (!customPeriodSelector) {
+                    console.log('期間選択要素が見つかりません');
+                    return;
+                }
+                
+                // 現在の表示状態を切り替え
+                if (customPeriodSelector.style.display === 'none' || !customPeriodSelector.style.display) {
+                    // 期間選択を表示
+                    customPeriodSelector.style.display = 'block';
+                    
+                    // デフォルトの期間を設定（過去6ヶ月）
+                    const today = new Date();
+                    const endMonth = today.toISOString().substr(0, 7);
+                    const startDate = new Date(today);
+                    startDate.setMonth(today.getMonth() - 5);
+                    const startMonth = startDate.toISOString().substr(0, 7);
+                    
+                    document.getElementById('chartStartMonth').value = startMonth;
+                    document.getElementById('chartEndMonth').value = endMonth;
+                } else {
+                    // 期間選択を非表示
+                    customPeriodSelector.style.display = 'none';
+                    
+                    // デフォルトの12ヶ月表示に戻す
+                    generateSimpleChart();
+                }
+            } catch (error) {
+                console.error('表示切替エラー:', error);
+                alert('表示切替でエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        // Chart.js版グラフ作成
+        function createChartJS() {
+            const canvas = document.getElementById('salesTrendChart');
+            
+            if (!canvas) {
+                console.log('Canvas要素が見つかりません');
+                return;
+            }
+            
+            console.log('Chart.js版作成試行');
+            
+            try {
+                if (window.salesTrendChart) {
+                    window.salesTrendChart.destroy();
+                }
+                
+                window.salesTrendChart = new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: ['1月', '2月', '3月', '4月', '5月', '6月'],
+                        datasets: [{
+                            label: '売上',
+                            data: [100000, 150000, 120000, 180000, 200000, 170000],
+                            borderColor: '#ff1493',
+                            backgroundColor: 'rgba(255, 20, 147, 0.1)',
+                            fill: true
+                        }]
+                    }
+                });
+                console.log('Chart.js作成成功');
+            } catch (error) {
+                console.log('Chart.jsエラー:', error);
+                alert('Chart.jsでエラーが発生しました。HTMLグラフを使用します。');
+                toggleChartType();
+            }
+        }
+
+        // 売上チャート作成（シンプル版）
+        function createSalesChart(canvas, monthlyData, title) {
+            console.log('シンプルチャート作成開始:', title);
+            console.log('月次データ:', monthlyData);
+            
+            if (!canvas) {
+                console.log('ERROR: canvas要素がnull');
+                return;
+            }
+            
+            // データをシンプルに準備
+            const labels = [];
+            const totalSalesData = [];
+            
+            monthlyData.forEach(data => {
+                labels.push(data.monthName || '未設定');
+                totalSalesData.push(data.totalSales || 0);
+            });
+            
+            console.log('シンプルラベル:', labels);
+            console.log('シンプル総売上データ:', totalSalesData);
+            
+            // 最もシンプルなChart.js設定
+            try {
+                window.salesTrendChart = new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '総売上',
+                            data: totalSalesData,
+                            borderColor: '#ff1493',
+                            backgroundColor: 'rgba(255, 20, 147, 0.2)',
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+                console.log('Chart作成成功');
+            } catch (error) {
+                console.log('Chart作成エラー:', error);
+            }
+        }
+
+        // ログアウト
+        function logout() {
+            currentUser = null;
+            isAdmin = false;
+            showScreen('loginScreen');
+        }
+        // データバックアップ・復元機能
+        
+        // 全データをJSONでエクスポート
+        function exportAllData() {
+            const allData = {};
+            
+            // localStorageの全データを取得
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                allData[key] = value;
+            }
+            
+            // JSONファイルとしてダウンロード
+            const dataBlob = new Blob([JSON.stringify(allData, null, 2)], {
+                type: 'application/json'
+            });
+            
+            const url = URL.createObjectURL(dataBlob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `eyelash-salon-data-${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `salon-data-backup-${new Date().toISOString().substr(0, 10)}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            showSuccess('データをエクスポートしました！');
+            alert('データをバックアップしました！');
         }
 
-        // データインポート
-        function importData() {
-            const file = document.getElementById('importFile').files[0];
+        // バックアップファイルからデータを復元
+        function importData(event) {
+            const file = event.target.files[0];
             if (!file) return;
             
             const reader = new FileReader();
@@ -763,47 +2234,390 @@
                 try {
                     const data = JSON.parse(e.target.result);
                     
-                    if (data.employees) localStorage.setItem('employees', JSON.stringify(data.employees));
-                    if (data.dailyReports) localStorage.setItem('dailyReports', JSON.stringify(data.dailyReports));
-                    
-                    showSuccess('データをインポートしました！');
-                    loadAllEmployeeData();
+                    // 確認メッセージ
+                    if (confirm('バックアップデータを復元しますか？\n（既存データは保持され、新しいデータが追加・更新されます）')) {
+                        // データを復元
+                        Object.keys(data).forEach(key => {
+                            localStorage.setItem(key, data[key]);
+                        });
+                        
+                        alert('データを復元しました！ページをリロードします。');
+                        location.reload();
+                    }
                 } catch (error) {
-                    alert('ファイルの形式が正しくありません。');
+                    alert('ファイルの読み込みに失敗しました: ' + error.message);
                 }
             };
             reader.readAsText(file);
         }
 
-        // 全データクリア
-        function clearAllData() {
-            if (confirm('本当に全てのデータを削除しますか？この操作は取り消せません。')) {
-                localStorage.removeItem('employees');
-                localStorage.removeItem('dailyReports');
-                showSuccess('全データをクリアしました');
-                loadAllEmployeeData();
+        // ========================================
+        // Firebase統合コード
+        // ========================================
+        
+        // Firebase設定（Firebase Consoleから取得した設定に置き換えてください）
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY_HERE",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com", 
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Firebase初期化
+        let db = null;
+        try {
+            // Firebase設定が正しい場合のみ初期化
+            if (firebaseConfig.apiKey !== "YOUR_API_KEY_HERE") {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                console.log('Firebase接続成功');
+                showFirebaseStatus('connected');
+            } else {
+                console.log('Firebase設定待ち - ローカルモードで動作');
+                showFirebaseStatus('offline');
+            }
+        } catch (error) {
+            console.log('Firebase接続エラー - ローカルモードで動作:', error);
+            showFirebaseStatus('offline');
+        }
+
+        // Firebase接続状態表示
+        function showFirebaseStatus(status) {
+            // 既存のステータス表示を削除
+            const existingStatus = document.querySelector('.firebase-status');
+            if (existingStatus) existingStatus.remove();
+            
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'firebase-status';
+            statusDiv.style.cssText = `
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                padding: 8px 12px;
+                border-radius: 8px;
+                font-size: 12px;
+                font-weight: bold;
+                z-index: 1000;
+                ${status === 'connected' 
+                    ? 'background: #4CAF50; color: white;' 
+                    : status === 'syncing' 
+                    ? 'background: #FF9800; color: white;'
+                    : 'background: #f44336; color: white;'}
+            `;
+            statusDiv.textContent = status === 'connected' 
+                ? '🔄 同期ON' 
+                : status === 'syncing'
+                ? '📤 同期中...'
+                : '📱 ローカル';
+            document.body.appendChild(statusDiv);
+        }
+
+        // デバイス識別用ID生成
+        function getDeviceId() {
+            let deviceId = localStorage.getItem('deviceId');
+            if (!deviceId) {
+                deviceId = 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+                localStorage.setItem('deviceId', deviceId);
+            }
+            return deviceId;
+        }
+
+        // Firestoreにデータ保存
+        async function saveToFirestore(collection, data) {
+            if (!db) return false;
+            
+            try {
+                showFirebaseStatus('syncing');
+                await db.collection(collection).add({
+                    ...data,
+                    deviceId: getDeviceId(),
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                showFirebaseStatus('connected');
+                return true;
+            } catch (error) {
+                console.error('Firebase保存エラー:', error);
+                showFirebaseStatus('offline');
+                return false;
             }
         }
 
-        // ログアウト
-        function logout() {
-            currentUser = '';
-            isAdmin = false;
-            showScreen('loginScreen');
-            showSuccess('ログアウトしました');
+        // Firestoreからデータ取得
+        async function getFromFirestore(collection, limit = 100) {
+            if (!db) return [];
+            
+            try {
+                const snapshot = await db.collection(collection)
+                    .orderBy('timestamp', 'desc')
+                    .limit(limit)
+                    .get();
+                
+                const data = [];
+                snapshot.forEach(doc => {
+                    const docData = doc.data();
+                    // timestampをJavaScript Dateに変換
+                    if (docData.timestamp && docData.timestamp.toDate) {
+                        docData.timestamp = docData.timestamp.toDate();
+                    }
+                    data.push({ id: doc.id, ...docData });
+                });
+                return data;
+            } catch (error) {
+                console.error('Firebase取得エラー:', error);
+                return [];
+            }
         }
 
-        // 初期化
-        window.addEventListener('load', function() {
-            // 現在の月をデフォルトに設定
-            const currentMonth = new Date().toISOString().substr(0, 7);
-            const summaryMonth = document.getElementById('summaryMonth');
-            if (summaryMonth) {
-                summaryMonth.value = currentMonth;
+        // 日報データをFirebaseに同期
+        async function syncDailyReportsToFirebase() {
+            if (!db) return;
+            
+            const reports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
+            
+            for (const [date, report] of Object.entries(reports)) {
+                // 既存データチェック（重複防止）
+                try {
+                    const existingQuery = await db.collection('daily_reports')
+                        .where('date', '==', date)
+                        .where('employeeName', '==', report.employeeName)
+                        .where('deviceId', '==', getDeviceId())
+                        .get();
+                    
+                    if (existingQuery.empty) {
+                        await saveToFirestore('daily_reports', {
+                            date: date,
+                            employeeName: report.employeeName,
+                            sales: report.sales || 0,
+                            technicalSales: report.technicalSales || 0,
+                            retailSales: report.retailSales || 0,
+                            customerCount: report.customerCount || 0,
+                            instagramUpdated: report.instagramUpdated || false,
+                            tiktokUpdated: report.tiktokUpdated || false,
+                            memo: report.memo || ''
+                        });
+                    }
+                } catch (error) {
+                    console.error('同期エラー:', error);
+                }
+            }
+        }
+
+        // Firebaseから日報データを取得してローカルに反映
+        async function syncDailyReportsFromFirebase() {
+            if (!db) return;
+            
+            try {
+                const firestoreReports = await getFromFirestore('daily_reports');
+                const localReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
+                
+                // Firestoreのデータをローカルにマージ
+                firestoreReports.forEach(report => {
+                    const key = report.date;
+                    // より新しいデータまたは存在しないデータのみ更新
+                    if (!localReports[key] || 
+                        (report.timestamp && new Date(report.timestamp) > new Date(localReports[key].lastUpdated || 0))) {
+                        localReports[key] = {
+                            employeeName: report.employeeName,
+                            sales: report.sales || 0,
+                            technicalSales: report.technicalSales || 0,
+                            retailSales: report.retailSales || 0,
+                            customerCount: report.customerCount || 0,
+                            instagramUpdated: report.instagramUpdated || false,
+                            tiktokUpdated: report.tiktokUpdated || false,
+                            memo: report.memo || '',
+                            lastUpdated: report.timestamp ? report.timestamp.getTime() : Date.now()
+                        };
+                    }
+                });
+                
+                localStorage.setItem('dailyReports', JSON.stringify(localReports));
+                
+                // 画面更新
+                if (typeof loadDailyReport === 'function') {
+                    loadDailyReport();
+                }
+                if (typeof loadMonthlySummary === 'function') {
+                    loadMonthlySummary();
+                }
+            } catch (error) {
+                console.error('Firebase同期エラー:', error);
+            }
+        }
+
+        // 目標データの同期
+        async function syncGoalsData() {
+            if (!db) return;
+            
+            const goals = JSON.parse(localStorage.getItem('monthlyGoals') || '{}');
+            
+            for (const [key, goal] of Object.entries(goals)) {
+                try {
+                    const existingQuery = await db.collection('monthly_goals')
+                        .where('monthKey', '==', key)
+                        .where('deviceId', '==', getDeviceId())
+                        .get();
+                    
+                    if (existingQuery.empty) {
+                        await saveToFirestore('monthly_goals', {
+                            monthKey: key,
+                            totalSales: goal.totalSales || 0,
+                            technicalSales: goal.technicalSales || 0,
+                            retailSales: goal.retailSales || 0,
+                            customerCount: goal.customerCount || 0,
+                            instagramGoal: goal.instagramGoal || 0,
+                            tiktokGoal: goal.tiktokGoal || 0
+                        });
+                    }
+                } catch (error) {
+                    console.error('目標同期エラー:', error);
+                }
+            }
+        }
+
+        // 完全同期実行
+        async function performFullSync() {
+            if (!db || !navigator.onLine || firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
+                console.log('Firebase未設定 - 同期スキップ');
+                return;
             }
             
-            console.log('✅ システム初期化完了 - 完全動作保証版 v2');
+            console.log('🔄 フル同期開始...');
+            showFirebaseStatus('syncing');
+            
+            try {
+                // 双方向同期
+                await Promise.all([
+                    syncDailyReportsToFirebase(),    // ローカル → Firebase
+                    syncDailyReportsFromFirebase(),  // Firebase → ローカル
+                    syncGoalsData()                  // 目標データ同期
+                ]);
+                
+                console.log('✅ 同期完了');
+                showFirebaseStatus('connected');
+                
+                // 同期完了通知（ユーザーに見える形で）
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 50px;
+                    right: 10px;
+                    background: #4CAF50;
+                    color: white;
+                    padding: 10px 15px;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    z-index: 1001;
+                    animation: slideIn 0.3s ease;
+                `;
+                notification.textContent = '✅ データ同期完了';
+                document.body.appendChild(notification);
+                
+                setTimeout(() => notification.remove(), 3000);
+                
+            } catch (error) {
+                console.error('同期エラー:', error);
+                showFirebaseStatus('offline');
+            }
+        }
+
+        // 既存の日報保存機能にFirebase同期を追加
+        const originalSaveDailyReport = window.saveDailyReport;
+        window.saveDailyReport = async function() {
+            // 元の保存処理を実行
+            if (originalSaveDailyReport) {
+                originalSaveDailyReport.call(this);
+            }
+            
+            // Firebase同期
+            setTimeout(async () => {
+                await syncDailyReportsToFirebase();
+            }, 100);
+        };
+
+        // 自動同期（10分おき）
+        setInterval(async () => {
+            if (navigator.onLine && db && firebaseConfig.apiKey !== "YOUR_API_KEY_HERE") {
+                await performFullSync();
+            }
+        }, 10 * 60 * 1000);
+
+        // ページ読み込み時の初回同期
+        window.addEventListener('load', async () => {
+            // 少し遅延させてDOM準備を待つ
+            setTimeout(async () => {
+                if (navigator.onLine && db && firebaseConfig.apiKey !== "YOUR_API_KEY_HERE") {
+                    await performFullSync();
+                }
+            }, 2000);
         });
+
+        // オンライン復帰時の同期
+        window.addEventListener('online', async () => {
+            console.log('📶 オンライン復帰 - 同期開始');
+            showFirebaseStatus('syncing');
+            if (db) {
+                await performFullSync();
+            }
+        });
+
+        // オフライン時の表示更新
+        window.addEventListener('offline', () => {
+            console.log('📱 オフラインモード');
+            showFirebaseStatus('offline');
+        });
+
+        // 手動同期ボタン機能（管理者画面用）
+        window.manualSync = async function() {
+            if (firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
+                alert('Firebase設定が必要です。\n\n設定方法:\n1. Firebase Consoleでプロジェクト設定\n2. 設定コードをindex.htmlに貼り付け\n\n現在はローカル保存で動作中です。');
+                return;
+            }
+            
+            if (!db) {
+                alert('Firebase接続に失敗しています。設定を確認してください。');
+                return;
+            }
+            
+            if (!navigator.onLine) {
+                alert('インターネット接続が必要です。');
+                return;
+            }
+            
+            await performFullSync();
+            alert('データ同期が完了しました！');
+        };
+
     </script>
+    
+    <!-- CSS追加: アニメーション -->
+    <style>
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .firebase-status {
+            transition: all 0.3s ease;
+        }
+        
+        .sync-button {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .sync-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+    </style>
 </body>
 </html>
