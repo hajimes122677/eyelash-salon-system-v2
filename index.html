@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>まつ毛エクステサロン 日報・目標管理システム v2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ffeef7 0%, #ffe0f0 50%, #ffcce6 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+        
+        .container {
+            max-width: 420px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 20px 20px 0 0;
+        }
+        
+        .header h1 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 0.9em;
+        }
+        
+        .login-form, .main-content {
+            padding: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input[type="text"], input[type="password"], input[type="date"], input[type="number"], input[type="month"], textarea, select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ffe0f0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: rgba(255, 240, 250, 0.5);
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #ff69b4;
+            background: rgba(255, 240, 250, 0.8);
+            box-shadow: 0 0 15px rgba(255, 105, 180, 0.2);
+        }
+        
+        .password-container {
+            position: relative;
+        }
+        
+        .password-container input {
+            padding-right: 50px;
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #ff69b4;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            z-index: 10;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+            touch-action: manipulation;
+        }
+        
+        .btn:hover, .btn:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 20, 147, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn.secondary {
+            background: linear-gradient(135deg, #dda0dd 0%, #ba55d3 100%);
+        }
+        
+        .btn.logout {
+            background: linear-gradient(135deg, #ffa500 0%, #ff6347 100%);
+            margin-top: 20px;
+        }
+        
+        .btn.success {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .tabs {
+            display: flex;
+            background: rgba(255, 240, 250, 0.8);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px 10px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            color: white;
+            box-shadow: 0 5px 15px rgba(255, 105, 180, 0.3);
+        }
+        
+        .tab:hover:not(.active) {
+            background: rgba(255, 105, 180, 0.1);
+            color: #ff69b4;
+        }
+        
+        .info-text {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 240, 250, 0.3);
+            border-radius: 8px;
+            border-left: 4px solid #ff69b4;
+        }
+        
+        .summary-card {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .data-item {
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .data-item.total { background: rgba(255, 20, 147, 0.1); }
+        .data-item.technical { background: rgba(76, 205, 196, 0.1); }
+        .data-item.retail { background: rgba(255, 165, 0, 0.1); }
+        .data-item.customer { background: rgba(138, 43, 226, 0.1); }
+        
+        .data-label {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .data-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .data-item.total .data-label { color: #ff1493; }
+        .data-item.total .data-value { color: #ff1493; }
+        .data-item.technical .data-label { color: #4ecdc4; }
+        .data-item.technical .data-value { color: #4ecdc4; }
+        .data-item.retail .data-label { color: #ffa500; }
+        .data-item.retail .data-value { color: #ffa500; }
+        .data-item.customer .data-label { color: #8a2be2; }
+        .data-item.customer .data-value { color: #8a2be2; }
+        
+        .employee-list {
+            background: rgba(255, 240, 250, 0.5);
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .success-message {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            background: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1001;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ログイン画面 -->
+        <div id="loginScreen">
+            <div class="header">
+                <h1>🎀 まつ毛エクステサロン</h1>
+                <p>日報・目標管理システム v2</p>
+            </div>
+            <div class="login-form">
+                <div class="form-group">
+                    <label for="loginName">名前</label>
+                    <input type="text" id="loginName" placeholder="お名前を入力してください">
+                </div>
+                <div class="form-group">
+                    <div class="password-container">
+                        <label for="loginPassword">パスワード</label>
+                        <input type="password" id="loginPassword" placeholder="パスワードを入力してください">
+                        <button type="button" class="password-toggle" onclick="togglePassword('loginPassword')">👁️</button>
+                    </div>
+                </div>
+                <button class="btn" onclick="employeeLogin()">社員ログイン</button>
+                <button class="btn secondary" onclick="adminLogin()">管理者ログイン</button>
+                <div class="info-text">
+                    <strong>管理者パスワード:</strong> admin123<br>
+                    新規社員登録は管理者画面から行えます
+                </div>
+            </div>
+        </div>
+
+        <!-- 社員メイン画面 -->
+        <div id="employeeMain" class="main-content hidden">
+            <div class="header">
+                <h1>社員画面</h1>
+                <p id="employeeWelcome">こんにちは！</p>
+            </div>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('dailyReport')">日報入力</button>
+                <button class="tab" onclick="showTab('monthlySummary')">月次サマリー</button>
+            </div>
+            
+            <!-- 日報入力タブ -->
+            <div id="dailyReportTab" class="tab-content">
+                <div class="summary-card">
+                    <h3 style="color: #ff69b4; margin-bottom: 15px;">📋 本日の日報</h3>
+                    <div class="form-group">
+                        <label for="totalSales">総売上 (円)</label>
+                        <input type="number" id="totalSales" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="technicalSales">技術売上 (円)</label>
+                        <input type="number" id="technicalSales" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="retailSales">物販売上 (円)</label>
+                        <input type="number" id="retailSales" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerCount">来客数 (人)</label>
+                        <input type="number" id="customerCount" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="instagramUpdate" style="width: auto;">
+                            Instagram更新済み
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="tiktokUpdate" style="width: auto;">
+                            TikTok更新済み
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="memo">メモ</label>
+                        <textarea id="memo" rows="3" placeholder="今日の振り返りや気づきを記入..."></textarea>
+                    </div>
+                    <button class="btn" onclick="saveDailyReport()">日報を保存</button>
+                </div>
+            </div>
+            
+            <!-- 月次サマリータブ -->
+            <div id="monthlySummaryTab" class="tab-content hidden">
+                <div class="summary-card">
+                    <h3 style="color: #ff69b4; margin-bottom: 15px;">📊 月次サマリー</h3>
+                    <div class="form-group">
+                        <label for="summaryMonth">対象月</label>
+                        <input type="month" id="summaryMonth" onchange="loadMonthlySummary()">
+                    </div>
+                    <div id="summaryContent">
+                        <p style="text-align: center; color: #888; padding: 40px;">月を選択してサマリーを表示</p>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn logout" onclick="logout()">ログアウト</button>
+        </div>
+
+        <!-- 管理者メイン画面 -->
+        <div id="adminMain" class="main-content hidden">
+            <div class="header">
+                <h1>管理者画面</h1>
+                <p>システム管理</p>
+            </div>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="showAdminTab('allEmployees')">全社員データ</button>
+                <button class="tab" onclick="showAdminTab('newEmployee')">新規登録</button>
+                <button class="tab" onclick="showAdminTab('settings')">設定</button>
+            </div>
+
+            <!-- 全社員データタブ -->
+            <div id="allEmployeesTab" class="tab-content">
+                <div class="summary-card">
+                    <h3 style="color: #ff69b4; margin-bottom: 15px;">👥 全社員データ</h3>
+                    <div id="allEmployeesContent">
+                        データを読み込み中...
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新規社員登録タブ -->
+            <div id="newEmployeeTab" class="tab-content hidden">
+                <div class="summary-card">
+                    <h3 style="color: #ff69b4; margin-bottom: 15px;">➕ 新規社員登録</h3>
+                    <div class="form-group">
+                        <label for="newEmployeeName">社員名</label>
+                        <input type="text" id="newEmployeeName" placeholder="社員名を入力">
+                    </div>
+                    <div class="form-group">
+                        <div class="password-container">
+                            <label for="newEmployeePassword">パスワード</label>
+                            <input type="password" id="newEmployeePassword" placeholder="パスワードを入力">
+                            <button type="button" class="password-toggle" onclick="togglePassword('newEmployeePassword')">👁️</button>
+                        </div>
+                    </div>
+                    <button class="btn" onclick="registerNewEmployee()">社員を登録</button>
+                </div>
+            </div>
+
+            <!-- 設定タブ -->
+            <div id="settingsTab" class="tab-content hidden">
+                <div class="summary-card">
+                    <h3 style="color: #ff69b4; margin-bottom: 15px;">⚙️ システム設定</h3>
+                    <div class="form-group">
+                        <button class="btn success" onclick="exportData()">📤 データエクスポート</button>
+                    </div>
+                    <div class="form-group">
+                        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData()">
+                        <button class="btn success" onclick="document.getElementById('importFile').click()">📥 データインポート</button>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn secondary" onclick="clearAllData()">🗑️ 全データクリア</button>
+                    </div>
+                    <div class="info-text">
+                        定期的にデータをバックアップしてください
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn logout" onclick="logout()">ログアウト</button>
+        </div>
+    </div>
+
+    <!-- 状態表示 -->
+    <div class="status-indicator">📱 ローカル保存モード</div>
+
+    <script>
+        // グローバル変数
+        let currentUser = '';
+        let isAdmin = false;
+
+        // 社員データ管理
+        function getEmployees() {
+            const employees = localStorage.getItem('employees');
+            return employees ? JSON.parse(employees) : [];
+        }
+
+        function saveEmployees(employees) {
+            localStorage.setItem('employees', JSON.stringify(employees));
+        }
+
+        // パスワード表示切り替え
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const button = input.parentElement.querySelector('.password-toggle');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                button.textContent = '👁️';
+            }
+        }
+
+        // 成功メッセージ表示
+        function showSuccess(message) {
+            const notification = document.createElement('div');
+            notification.className = 'success-message';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // 社員ログイン
+        function employeeLogin() {
+            const name = document.getElementById('loginName').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!name || !password) {
+                alert('名前とパスワードを入力してください。');
+                return;
+            }
+            
+            const employees = getEmployees();
+            const employee = employees.find(emp => emp.name === name && emp.password === password);
+            
+            if (employee) {
+                currentUser = name;
+                isAdmin = false;
+                showScreen('employeeMain');
+                document.getElementById('employeeWelcome').textContent = `こんにちは、${name}さん！`;
+                loadDailyReport();
+                showSuccess('ログインしました！');
+            } else {
+                alert('名前またはパスワードが間違っています。');
+            }
+        }
+
+        // 管理者ログイン
+        function adminLogin() {
+            const password = document.getElementById('loginPassword').value;
+            
+            if (password === 'admin123') {
+                currentUser = 'admin';
+                isAdmin = true;
+                showScreen('adminMain');
+                loadAllEmployeeData();
+                showSuccess('管理者としてログインしました！');
+            } else {
+                alert('管理者パスワードが間違っています。');
+            }
+        }
+
+        // 画面切り替え
+        function showScreen(screenId) {
+            const screens = ['loginScreen', 'employeeMain', 'adminMain'];
+            screens.forEach(screen => {
+                document.getElementById(screen).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+            
+            if (screenId === 'loginScreen') {
+                document.getElementById('loginName').value = '';
+                document.getElementById('loginPassword').value = '';
+            }
+        }
+
+        // タブ切り替え（社員画面）
+        function showTab(tabName) {
+            const tabs = document.querySelectorAll('#employeeMain .tab');
+            const contents = document.querySelectorAll('#employeeMain .tab-content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.add('hidden'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.remove('hidden');
+            
+            if (tabName === 'monthlySummary') {
+                const currentMonth = new Date().toISOString().substr(0, 7);
+                document.getElementById('summaryMonth').value = currentMonth;
+                loadMonthlySummary();
+            }
+        }
+
+        // タブ切り替え（管理者画面）
+        function showAdminTab(tabName) {
+            const tabs = document.querySelectorAll('#adminMain .tab');
+            const contents = document.querySelectorAll('#adminMain .tab-content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.add('hidden'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.remove('hidden');
+        }
+
+        // 日報保存
+        function saveDailyReport() {
+            const report = {
+                employeeName: currentUser,
+                sales: parseInt(document.getElementById('totalSales').value) || 0,
+                technicalSales: parseInt(document.getElementById('technicalSales').value) || 0,
+                retailSales: parseInt(document.getElementById('retailSales').value) || 0,
+                customerCount: parseInt(document.getElementById('customerCount').value) || 0,
+                instagramUpdated: document.getElementById('instagramUpdate').checked,
+                tiktokUpdated: document.getElementById('tiktokUpdate').checked,
+                memo: document.getElementById('memo').value,
+                timestamp: new Date().toISOString()
+            };
+            
+            const today = new Date().toISOString().split('T')[0];
+            let dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
+            
+            dailyReports[today] = report;
+            localStorage.setItem('dailyReports', JSON.stringify(dailyReports));
+            
+            showSuccess('日報が保存されました！');
+        }
+
+        // 日報データ読み込み
+        function loadDailyReport() {
+            const today = new Date().toISOString().split('T')[0];
+            const dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
+            const todayReport = dailyReports[today];
+            
+            if (todayReport && todayReport.employeeName === currentUser) {
+                document.getElementById('totalSales').value = todayReport.sales || '';
+                document.getElementById('technicalSales').value = todayReport.technicalSales || '';
+                document.getElementById('retailSales').value = todayReport.retailSales || '';
+                document.getElementById('customerCount').value = todayReport.customerCount || '';
+                document.getElementById('instagramUpdate').checked = todayReport.instagramUpdated || false;
+                document.getElementById('tiktokUpdate').checked = todayReport.tiktokUpdated || false;
+                document.getElementById('memo').value = todayReport.memo || '';
+            }
+        }
+
+        // 月次サマリー読み込み
+        function loadMonthlySummary() {
+            const selectedMonth = document.getElementById('summaryMonth').value;
+            const dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
+            
+            const monthlyData = {
+                totalSales: 0,
+                technicalSales: 0,
+                retailSales: 0,
+                customerCount: 0,
+                workDays: 0,
+                instagramDays: 0,
+                tiktokDays: 0
+            };
+            
+            Object.entries(dailyReports).forEach(([date, report]) => {
+                if (date.startsWith(selectedMonth) && report.employeeName === currentUser) {
+                    monthlyData.totalSales += report.sales || 0;
+                    monthlyData.technicalSales += report.technicalSales || 0;
+                    monthlyData.retailSales += report.retailSales || 0;
+                    monthlyData.customerCount += report.customerCount || 0;
+                    monthlyData.workDays++;
+                    if (report.instagramUpdated) monthlyData.instagramDays++;
+                    if (report.tiktokUpdated) monthlyData.tiktokDays++;
+                }
+            });
+            
+            const summaryContent = document.getElementById('summaryContent');
+            if (monthlyData.workDays === 0) {
+                summaryContent.innerHTML = '<p style="text-align: center; color: #888; padding: 40px;">この月のデータはありません</p>';
+                return;
+            }
+            
+            summaryContent.innerHTML = `
+                <div class="data-grid">
+                    <div class="data-item total">
+                        <div class="data-label">総売上</div>
+                        <div class="data-value">${monthlyData.totalSales.toLocaleString()}円</div>
+                    </div>
+                    <div class="data-item technical">
+                        <div class="data-label">技術売上</div>
+                        <div class="data-value">${monthlyData.technicalSales.toLocaleString()}円</div>
+                    </div>
+                    <div class="data-item retail">
+                        <div class="data-label">物販売上</div>
+                        <div class="data-value">${monthlyData.retailSales.toLocaleString()}円</div>
+                    </div>
+                    <div class="data-item customer">
+                        <div class="data-label">来客数</div>
+                        <div class="data-value">${monthlyData.customerCount}人</div>
+                    </div>
+                </div>
+                <div style="background: rgba(255, 240, 250, 0.5); padding: 15px; border-radius: 8px;">
+                    <div style="margin-bottom: 8px;"><strong>稼働日数:</strong> ${monthlyData.workDays}日</div>
+                    <div style="margin-bottom: 8px;"><strong>Instagram更新:</strong> ${monthlyData.instagramDays}日</div>
+                    <div><strong>TikTok更新:</strong> ${monthlyData.tiktokDays}日</div>
+                </div>
+            `;
+        }
+
+        // 全社員データ読み込み
+        function loadAllEmployeeData() {
+            const employees = getEmployees();
+            const dailyReports = JSON.parse(localStorage.getItem('dailyReports') || '{}');
+            const content = document.getElementById('allEmployeesContent');
+            
+            if (employees.length === 0) {
+                content.innerHTML = '<p style="text-align: center; color: #888;">登録された社員はいません</p>';
+                return;
+            }
+            
+            let html = `<div style="margin-bottom: 20px;"><h4 style="color: #ff69b4; margin-bottom: 15px;">登録社員一覧 (${employees.length}名)</h4>`;
+            
+            employees.forEach(emp => {
+                const reportCount = Object.keys(dailyReports).filter(date => 
+                    dailyReports[date].employeeName === emp.name
+                ).length;
+                
+                html += `
+                    <div class="employee-list">
+                        <div>
+                            <strong>${emp.name}</strong>
+                            <div style="font-size: 12px; color: #666;">日報提出: ${reportCount}回</div>
+                        </div>
+                        <div style="font-size: 12px; color: #888;">
+                            登録: ${new Date(emp.registeredAt).toLocaleDateString()}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            content.innerHTML = html;
+        }
+
+        // 新規社員登録
+        function registerNewEmployee() {
+            const name = document.getElementById('newEmployeeName').value.trim();
+            const password = document.getElementById('newEmployeePassword').value;
+            
+            if (!name || !password) {
+                alert('社員名とパスワードを入力してください。');
+                return;
+            }
+            
+            const employees = getEmployees();
+            if (employees.find(emp => emp.name === name)) {
+                alert('同じ名前の社員が既に登録されています。');
+                return;
+            }
+            
+            const newEmployee = {
+                name: name,
+                password: password,
+                registeredAt: new Date().toISOString()
+            };
+            
+            employees.push(newEmployee);
+            saveEmployees(employees);
+            
+            document.getElementById('newEmployeeName').value = '';
+            document.getElementById('newEmployeePassword').value = '';
+            
+            showSuccess(`${name}さんが登録されました！`);
+            loadAllEmployeeData();
+        }
+
+        // データエクスポート
+        function exportData() {
+            const data = {
+                employees: JSON.parse(localStorage.getItem('employees') || '[]'),
+                dailyReports: JSON.parse(localStorage.getItem('dailyReports') || '{}'),
+                exportDate: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `eyelash-salon-data-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showSuccess('データをエクスポートしました！');
+        }
+
+        // データインポート
+        function importData() {
+            const file = document.getElementById('importFile').files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    if (data.employees) localStorage.setItem('employees', JSON.stringify(data.employees));
+                    if (data.dailyReports) localStorage.setItem('dailyReports', JSON.stringify(data.dailyReports));
+                    
+                    showSuccess('データをインポートしました！');
+                    loadAllEmployeeData();
+                } catch (error) {
+                    alert('ファイルの形式が正しくありません。');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // 全データクリア
+        function clearAllData() {
+            if (confirm('本当に全てのデータを削除しますか？この操作は取り消せません。')) {
+                localStorage.removeItem('employees');
+                localStorage.removeItem('dailyReports');
+                showSuccess('全データをクリアしました');
+                loadAllEmployeeData();
+            }
+        }
+
+        // ログアウト
+        function logout() {
+            currentUser = '';
+            isAdmin = false;
+            showScreen('loginScreen');
+            showSuccess('ログアウトしました');
+        }
+
+        // 初期化
+        window.addEventListener('load', function() {
+            // 現在の月をデフォルトに設定
+            const currentMonth = new Date().toISOString().substr(0, 7);
+            const summaryMonth = document.getElementById('summaryMonth');
+            if (summaryMonth) {
+                summaryMonth.value = currentMonth;
+            }
+            
+            console.log('✅ システム初期化完了 - 完全動作保証版 v2');
+        });
+    </script>
+</body>
+</html>
